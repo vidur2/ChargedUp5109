@@ -5,41 +5,33 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.SPI;
-import edu.wpi.first.wpilibj.Timer;
-import java.util.Optional;
-
+import frc.robot.util.Constants;
 
 import com.kauailabs.navx.frc.*;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
 import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.trajectory.Trajectory;
-import edu.wpi.first.math.trajectory.Trajectory.State;
 import edu.wpi.first.networktables.*;
 import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 
+
 /** Represents a swerve drive style drivetrain. */
 public class Drivetrain {
 
  
 
-  public static final double kMaxSpeed = 2.5; // 3 meters per second
+  public static final double kMaxSpeed = 5; // 3 meters per second
   public static final double kMaxAngularSpeed = 3 * Math.PI; // 1/2 rotation per second
 
   // Network Table instantiation
   private final NetworkTableInstance ntwrkInst = NetworkTableInstance.getDefault();
   public NetworkTable ballAlignmentValues = ntwrkInst.getTable("ballAlignment");
-
-  private RamseteController cRamseteController = new RamseteController();
-
-  // Map to store velocities of robot and time
-  private Translation2d lastKnownVelocity = new Translation2d(0, 0);
-  private double lastKnownTime = 0;
 
   // Bot measurements
   private final Translation2d m_frontLeftLocation = new Translation2d(0.2921, 0.2921);
@@ -54,8 +46,7 @@ public class Drivetrain {
   public SwerveModule m_backLeft;
   public SwerveModule m_backRight;
   public AHRS navX = new AHRS(SPI.Port.kMXP);
-  private Rotation2d initialMeasurement = new Rotation2d((navX.getYaw() % 360) * Math.PI / 180);
-
+  public SwerveDriveOdometry m_odometry;
   // Shooter Range
   public double shooterRangeCm; // Enter shooter distance here (cm)
 
@@ -97,25 +88,36 @@ public class Drivetrain {
         (int) swerveBackLeftMotors[2], swerveBackLeftMotors[3]);
     m_backRight = new SwerveModule((int) swerveBackRightMotors[0], (int) swerveBackRightMotors[1],
         (int) swerveBackRightMotors[2], swerveBackRightMotors[3]);
-  }
 
+    m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
+  }
+  private float prevPitch = 0.0f;
+  private float integral = 0.0f;
   public void autoBalance() // auto balance for the charging station
   {
-    float pitch = navX.getPitch();
-    System.out.println(pitch);
-    float speed = 0.5f; // m/s
-    float deadzone = 2.5f; //degrees
-    /*drive(speed, 0, 0, true);*/ 
-    System.out.println(pitch);
+    float pitch = navX.getPitch() - Constants.kNavXOffset; //pitch is offset by 2
+    integral += pitch*0.01f;
+    //System.out.println("Current Pitch: " + pitch);
+    float P = 0.125f;
+    float I = -0.0f;
+    float D = 0.0f;
+    float deadzone = 2.5f; //degrees (2.5 is max allowed on docs)
+    integral = Math.max(integral, -P);
+
     if (pitch > deadzone || pitch < -deadzone)
     {
-      speed *= -pitch;
-      drive(speed, 0, 0, true);
+      float speed =  P * pitch + I * integral + D * (pitch - prevPitch)/0.02f;
+      System.out.println("Speed: " + speed + " At Pitch: " + pitch);
+
+      drive(-speed, 0, 0, Constants.kFieldRelative);
     }
     else
     {
-      drive(0, 0, 0, true);
-    } 
+      drive(0, 0, 0, Constants.kFieldRelative);
+      integral = 0.0f;
+      prevPitch = 0.0f;
+    }
+    prevPitch = pitch;
   }
 
   /**
@@ -151,7 +153,7 @@ public class Drivetrain {
   }
 
   public void driveChassisSpeed(ChassisSpeeds wanted) {
-    this.driveChassisSpeed(wanted, true);
+    this.driveChassisSpeed(wanted, Constants.kFieldRelative);
   }
 
   public void driveChassisSpeed(ChassisSpeeds wanted, boolean fieldRelative) {
@@ -170,14 +172,22 @@ public class Drivetrain {
   }
 
   /** Updates the field relative position of the robot. */
-  // public void updateOdometry() {
-  //   m_odometry.update(
-  //       new Rotation2d(navX.getYaw() * 180 / Math.PI),
-  //       m_frontLeft.getState(),
-  //       m_frontRight.getState(),
-  //       m_backLeft.getState(),
-  //       m_backRight.getState());
-  // }
+  public Pose2d updateOdometry() {
+    return m_odometry.update(
+        new Rotation2d(navX.getYaw() * 180 / Math.PI),
+        getPositions());
+  }
+
+  public SwerveModulePosition[] getPositions() {
+    SwerveModulePosition[] positions = {
+      m_frontLeft.getState(),
+      m_frontRight.getState(),
+      m_backLeft.getState(),
+      m_backRight.getState(),
+    };
+
+    return positions;
+  }
 
   public void resetEncoders() {
     m_backRight.m_turningEncoderRelative.setPosition(0);
@@ -186,225 +196,4 @@ public class Drivetrain {
     m_frontRight.m_turningEncoderRelative.setPosition(0);
   }
 
-
-  // // Function to fake odometry calc
-  // public Pose2d getRobotPose() {
-
-  //   // Gets the current time 
-  //   double currentTime = Timer.getFPGATimestamp();
-
-  //   // Iterates through velocity HashMap backwards
-  //   Double[] velocityArray = velocityMap.keySet().toArray(Double[]::new);
-  //   for (int i = velocityArray.length - 1; i > 0; i--) {
-
-  //     // Multiplies velocity * time to get distance
-  //     double time = velocityArray[i];
-  //     Translation2d velocityComp = velocityMap.get(time);
-  //     double vx = velocityComp.getX();
-  //     double vy = velocityComp.getY();
-  //     globalX += (vx * (currentTime - time));
-  //     globalY += (vy * (currentTime - time));
-  //     currentTime = time;
-  //   }
-
-  //   // Adds the displacement from acceleration to constant velocity calculation
-  //   double dispX = navX.getDisplacementX();
-  //   double dispY = navX.getDisplacementY();
-
-  //   if (Math.abs(dispX) > odometryLimiter) {
-  //     globalY -= dispX;
-  //   } 
-
-  //   if (Math.abs(dispY) > odometryLimiter) {
-  //     globalX -= dispY;
-  //   }
-
-  //   // Resets displacement and velocityMap
-  //   navX.resetDisplacement();
-  //   velocityMap.clear();
-
-  //   // Returns RobotPose
-  //   return new Pose2d(new Translation2d(globalX, globalY), new Rotation2d(-navX.getYaw()));
-  // }
-
-  public Translation2d getRobotPoseNavX() {
-    Translation2d lastKnownCoord = new Translation2d(-navX.getDisplacementY(), -navX.getDisplacementX());
-    double currentTime = Timer.getFPGATimestamp();
-    Translation2d deltaTranslation  = lastKnownVelocity.times(Math.abs(currentTime-lastKnownTime));
-    Translation2d finalTranslation = lastKnownCoord.plus(deltaTranslation);
-    return finalTranslation;
-  }
-
-  /**
-   * Initializes the listener for aligining to balls using the jetson nano program
-   * Drives everytime the network tables is updated
-   * 
-   * @return Returns the id of the listener
-   */
-  // public int initBallListener() {
-  //   NetworkTableEntry allianceEntry = ballAlignmentValues.getEntry("alliance");
-  //   allianceEntry.setString(alliance.toString());
-  //   int listenerHandle = ballAlignmentValues.addEntryListener("tVelocity", (table, key, entry, value, flags) -> {
-  //     double[] velocity = value.getDoubleArray();
-  //     double xVel = velocity[0];
-  //     double yVel = velocity[1];
-
-  //     if (xVel != 0 && yVel != 0) {
-  //       drive(xVel, yVel, 0, true);
-  //     }
-  //   }, EntryListenerFlags.kNew | EntryListenerFlags.kUpdate);
-  //   return listenerHandle;
-  // }
-
-  public void customAutonAlign() {
-
-    // double testCounter = 0;
-    // double degreeOffset = 1;
-
-    // double e_frontLeftPos = m_frontLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-    // double e_frontRightPos = m_frontRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    // double e_backRightPos = m_backRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    // double e_backLeftPos = m_backLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-    // // boolean outuput =Math.abs(e_backLeftPos) <= degreeOffset &&
-    // // Math.abs(e_frontLeftPos) <= degreeOffset && Math.abs(e_frontRightPos) <=
-    // // degreeOffset && Math.abs(e_backRightPos) <= degreeOffset;
-
-    // double startTime = Timer.getFPGATimestamp();
-
-    // while (testCounter == 0) {
-    //   double currTime = Timer.getFPGATimestamp();
-    //   System.out.println(currTime - startTime);
-    //   if (Math.abs(e_backLeftPos) <= degreeOffset && Math.abs(e_frontLeftPos) <= degreeOffset
-    //       && Math.abs(e_frontRightPos) <= degreeOffset && Math.abs(e_backRightPos) <= degreeOffset) {
-    //     testCounter = 1;
-    //   }
-    //   e_frontLeftPos = m_frontLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-    //   e_frontRightPos = m_frontRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    //   e_backRightPos = m_backRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    //   e_backLeftPos = m_backLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-
-    //   // boolean output = Math.abs(e_backLeftPos) <= degreeOffset &&
-    //   // Math.abs(e_frontLeftPos) <= degreeOffset && Math.abs(e_frontRightPos) <=
-    //   // degreeOffset && Math.abs(e_backRightPos) <= degreeOffset;
-
-    //   // System.out.println(-1 * e_frontLeftPos/180);
-    //   // System.out.println(-1 * e_frontRightPos/180);
-    //   // System.out.println(-1 * e_backRightPos/180);
-    //   // System.out.println(-1 * e_frontLeftPos/180);
-
-    //   m_frontLeft.m_turningMotor.set(-1 * e_frontLeftPos / 180);
-    //   m_backLeft.m_turningMotor.set(-1 * e_backLeftPos / 180);
-    //   m_frontRight.m_turningMotor.set(-1 * e_frontRightPos / 180);
-    //   m_backRight.m_turningMotor.set(-1 * e_backRightPos / 180);
-
-    //   if (currTime - startTime > 3) {
-    //     break;
-    //   }
-    // }
-
-    // System.out.println("out of init loop");
-  }
-
-  public void customTeleopAlign() {
-
-    // double testCounter = 0;
-    // double degreeOffset = 10;
-
-    // double e_frontLeftPos = m_frontLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-    // double e_frontRightPos = m_frontRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    // double e_backRightPos = m_backRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    // double e_backLeftPos = m_backLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-    // // boolean outuput =Math.abs(e_backLeftPos) <= degreeOffset &&
-    // // Math.abs(e_frontLeftPos) <= degreeOffset && Math.abs(e_frontRightPos) <=
-    // // degreeOffset && Math.abs(e_backRightPos) <= degreeOffset;
-
-    // double startTime = Timer.getFPGATimestamp();
-
-    // while (testCounter == 0) {
-    //   double currTime = Timer.getFPGATimestamp();
-    //   System.out.println(currTime - startTime);
-    //   if (Math.abs(e_backLeftPos) <= degreeOffset && Math.abs(e_frontLeftPos) <= degreeOffset
-    //       && Math.abs(e_frontRightPos) <= degreeOffset && Math.abs(e_backRightPos) <= degreeOffset) {
-    //     testCounter = 1;
-    //   }
-    //   e_frontLeftPos = m_frontLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-    //   e_frontRightPos = m_frontRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    //   e_backRightPos = m_backRight.m_turningEncoderAbsolute.getAbsolutePosition();
-    //   e_backLeftPos = m_backLeft.m_turningEncoderAbsolute.getAbsolutePosition();
-
-    //   // boolean output = Math.abs(e_backLeftPos) <= degreeOffset &&
-    //   // Math.abs(e_frontLeftPos) <= degreeOffset && Math.abs(e_frontRightPos) <=
-    //   // degreeOffset && Math.abs(e_backRightPos) <= degreeOffset;
-
-    //   // System.out.println(-1 * e_frontLeftPos/180);
-    //   // System.out.println(-1 * e_frontRightPos/180);
-    //   // System.out.println(-1 * e_backRightPos/180);
-    //   // System.out.println(-1 * e_frontLeftPos/180);
-
-    //   m_frontLeft.m_turningMotor.set(-1 * e_frontLeftPos / 180);
-    //   m_backLeft.m_turningMotor.set(-1 * e_backLeftPos / 180);
-    //   m_frontRight.m_turningMotor.set(-1 * e_frontRightPos / 180);
-    //   m_backRight.m_turningMotor.set(-1 * e_backRightPos / 180);
-
-    //   if (currTime - startTime > 3) {
-    //     break;
-    //   }
-    // }
-
-    // System.out.println("out of init loop");
-  }
-
-  public Optional<Pose2d> followTrajectory(Trajectory trajectory, double startTime, Pose2d prevPose) {
-    // double startTime = Timer.getFPGATimestamp();
-
-    double timeDiff = Timer.getFPGATimestamp() - startTime;
-
-    // Pose2d prevPose = trajectory.getInitialPose();
-
-    if (trajectory.getTotalTimeSeconds() > timeDiff) {
-      State state = trajectory.sample(timeDiff);
-
-      // Might be opposite depending on orientation of bot
-      Translation2d dirVector = state.poseMeters.getTranslation().minus(prevPose.getTranslation());
-      Rotation2d deltTheta = state.poseMeters.getRotation().minus(prevPose.getRotation());
-      driveTo(state.velocityMetersPerSecond, deltTheta, dirVector, state.curvatureRadPerMeter);
-      // prevPose = state.poseMeters;
-      return Optional.of(state.poseMeters);
-    }  else {
-      return Optional.empty();
-    }
-  }
-
-
-  public Optional<State> followTrajectory(Trajectory trajectory, double startTime, State prevState) {
-    double timeDiff = Timer.getFPGATimestamp() - startTime;
-
-    if (trajectory.getTotalTimeSeconds() > timeDiff) {
-      State goal = trajectory.sample(timeDiff);
-      ChassisSpeeds adjustedSpeeds = cRamseteController.calculate(prevState.poseMeters, goal);
-      drive(adjustedSpeeds.vxMetersPerSecond, adjustedSpeeds.vyMetersPerSecond, adjustedSpeeds.omegaRadiansPerSecond, true);
-      return Optional.of(goal);
-    } else {
-      drive(0, 0, 0, true);
-      return Optional.empty();
-    }
-  }
-
-  public void driveTo(double speed, Rotation2d rotationVector, Translation2d dirVector, double curvatureRadPerMeter) {
-    double xRatio = dirVector.getX()/dirVector.getNorm();
-    double yRatio = dirVector.getY()/dirVector.getNorm();
-
-    drive(-yRatio * speed, -xRatio * speed, curvatureRadPerMeter * speed, false);
-  }
-
-  // public void autoAlignToGoalUsingLimelight() {
-  //   OptionalDouble posRes = limelight.getXOffset();
-  //   if (posRes.isPresent()) {
-  //     double res = posRes.getAsDouble();
-  //     auto.rotateTo(Rotation2d.fromDegrees(navX.getYaw() + res));
-  //   } else {
-  //     System.out.println("No object detected.");
-  //   }
-
-  // }
 }

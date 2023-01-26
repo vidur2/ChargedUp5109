@@ -4,13 +4,20 @@
 
 package frc.robot;
 
+import java.lang.invoke.ConstantBootstraps;
+
+import javax.swing.text.StyleContext.SmallAttributeSet;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.util.ButtonState;
+import frc.robot.util.Constants;
 import frc.robot.util.ControllerState;
 import frc.robot.util.TeleopMethods;
 
@@ -75,11 +82,28 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
+    Constants.kNavXOffset = m_swerve.navX.getPitch();
+    m_swerve.m_frontLeft.m_driveEncoder.setPosition(0);
+    m_swerve.m_frontRight.m_driveEncoder.setPosition(0);
+    m_swerve.m_backRight.m_driveEncoder.setPosition(0);
+    m_swerve.m_backLeft.m_driveEncoder.setPosition(0);
+    // m_swerve.navX.calibrate();
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     m_chooser.addOption("My Auto", kCustomAuto);
     SmartDashboard.putData("Auto choices", m_chooser);
-
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
+    SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("bRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
+    Pose2d pose = m_swerve.updateOdometry();
+    SmartDashboard.putNumber("x", pose.getX());
+    SmartDashboard.putNumber("y", pose.getY());
+    SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch() - Constants.kNavXOffset);
+    m_swerve.navX.reset();
+    m_swerve.m_odometry.resetPosition(m_swerve.navX.getRotation2d(), m_swerve.getPositions(), new Pose2d(new Translation2d(0, 0), m_swerve.navX.getRotation2d()));
     controllerState.addMethod(TeleopMethods.AutoBalance);
+  
   }
 
   /**
@@ -90,7 +114,18 @@ public class Robot extends TimedRobot {
    * SmartDashboard integrated updating.
    */
   @Override
-  public void robotPeriodic() {}
+  public void robotPeriodic() {
+    SmartDashboard.putData("Auto choices", m_chooser);
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
+    SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("bRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch() - Constants.kNavXOffset);
+    Pose2d pose = m_swerve.updateOdometry();
+    SmartDashboard.putNumber("x", pose.getX());
+    SmartDashboard.putNumber("y", pose.getY());
+  }
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
@@ -132,7 +167,7 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    driveWithJoystick(true);
+    driveWithJoystick(Constants.kFieldRelative);
     handleDebounce(xController.getXButton(), TeleopMethods.AutoBalance);
   }
 
@@ -147,13 +182,21 @@ public class Robot extends TimedRobot {
   /** This function is called once when test mode is enabled. */
   @Override
   public void testInit() {
-    m_swerve.autoBalance();
+    m_swerve.resetEncoders();
   }
 
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
-    m_swerve.autoBalance();
+    if (xController.getAButton()) {
+      m_swerve.autoBalance();
+    }
+    else if (xController.getBButton()) {
+      m_swerve.drive(-1, 0, 0, Constants.kFieldRelative);
+    }
+    else {
+      driveWithJoystick(Constants.kFieldRelative);
+    }
   }
 
   public void handleDebounce(boolean buttonPress, TeleopMethods method) {

@@ -11,7 +11,9 @@ import com.revrobotics.CANSparkMax.ControlType;
 import com.revrobotics.CANSparkMax.IdleMode;
 import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import frc.robot.util.Constants;
 
 public class SwerveModule implements RevOptimization{
   private static final double kWheelRadius = 0.0508;
@@ -46,6 +48,8 @@ public class SwerveModule implements RevOptimization{
     // Motor Instantiation
     m_driveMotor = new CANSparkMax(driveMotorChannel, MotorType.kBrushless);
     m_turningMotor = new CANSparkMax(turningMotorChannel, MotorType.kBrushless);
+
+    // m_driveMotor.setClosedLoopRampRate(Constants.kRampRate);
 
     // Change this if teleop no work
     // m_driveMotor.setClosedLoopRampRate(maxRampUpRate);
@@ -87,6 +91,7 @@ public class SwerveModule implements RevOptimization{
     // kEncoderResolution);
 
     m_driveEncoder.setVelocityConversionFactor(1 / (kTicksPerWheelRadian) * kWheelRadius);
+    m_driveEncoder.setPositionConversionFactor(1 / (kTicksPerWheelRadian) * kWheelRadius);
     m_turningEncoderRelative.setPositionConversionFactor(1 /kTicksPerTurnerWheelRadian);
 
     // m_turningPIDController.enableContinuousInput(-Math.PI, Math.PI);
@@ -113,9 +118,9 @@ public class SwerveModule implements RevOptimization{
    *
    * @return The current state of the module.
    */
-  public SwerveModuleState getState() {
-    return new SwerveModuleState(m_driveEncoder.getVelocity(),
-        new Rotation2d(m_turningEncoderRelative.getPosition() * 2 * Math.PI));
+  public SwerveModulePosition getState() {
+    return new SwerveModulePosition(m_driveEncoder.getPosition(),
+        Rotation2d.fromRadians(m_turningEncoderRelative.getPosition()));
   }
 
   /**
