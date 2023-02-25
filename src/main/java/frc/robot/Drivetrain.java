@@ -6,6 +6,7 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.SPI;
 import frc.robot.util.Constants;
+import frc.robot.util.VisionTrack;
 
 import com.kauailabs.navx.frc.*;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -26,12 +27,14 @@ public class Drivetrain {
 
  
 
-  public static final double kMaxSpeed = 5; // 3 meters per second
+  public static final double kMaxSpeed = 3; // 3 meters per second
   public static final double kMaxAngularSpeed = 3 * Math.PI; // 1/2 rotation per second
 
   // Network Table instantiation
   private final NetworkTableInstance ntwrkInst = NetworkTableInstance.getDefault();
-  public NetworkTable ballAlignmentValues = ntwrkInst.getTable("ballAlignment");
+  public VisionTrack visionTrack = new VisionTrack(ntwrkInst);
+
+  // public NetworkTable ballAlignmentValues = ntwrkInst.getTable("ballAlignment");
 
   // Bot measurements
   private final Translation2d m_frontLeftLocation = new Translation2d(0.2921, 0.2921);
@@ -80,16 +83,16 @@ public class Drivetrain {
     navX.resetDisplacement();
         
     // ntwrkInst.startClientTeam(5109);
-    m_frontLeft = new SwerveModule((int) swerveFrontLeftMotors[0], (int) swerveFrontLeftMotors[1],
-        (int) swerveFrontLeftMotors[2], swerveFrontLeftMotors[3]);
-    m_frontRight = new SwerveModule((int) swerveFrontRightMotors[0], (int) swerveFrontRightMotors[1],
-        (int) swerveFrontRightMotors[2], swerveFrontRightMotors[3]);
-    m_backLeft = new SwerveModule((int) swerveBackLeftMotors[0], (int) swerveBackLeftMotors[1],
-        (int) swerveBackLeftMotors[2], swerveBackLeftMotors[3]);
-    m_backRight = new SwerveModule((int) swerveBackRightMotors[0], (int) swerveBackRightMotors[1],
-        (int) swerveBackRightMotors[2], swerveBackRightMotors[3]);
+    // m_frontLeft = new SwerveModule((int) swerveFrontLeftMotors[0], (int) swerveFrontLeftMotors[1],
+    //     (int) swerveFrontLeftMotors[2], swerveFrontLeftMotors[3]);
+    // m_frontRight = new SwerveModule((int) swerveFrontRightMotors[0], (int) swerveFrontRightMotors[1],
+    //     (int) swerveFrontRightMotors[2], swerveFrontRightMotors[3]);
+    // m_backLeft = new SwerveModule((int) swerveBackLeftMotors[0], (int) swerveBackLeftMotors[1],
+    //     (int) swerveBackLeftMotors[2], swerveBackLeftMotors[3]);
+    // m_backRight = new SwerveModule((int) swerveBackRightMotors[0], (int) swerveBackRightMotors[1],
+    //     (int) swerveBackRightMotors[2], swerveBackRightMotors[3]);
 
-    m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
+    // m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
   }
   private float prevPitch = 0.0f;
   private float integral = 0.0f;
