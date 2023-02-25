@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.TopStuff.Drivetrain;
 import frc.robot.util.ButtonState;
 import frc.robot.util.Constants;
 import frc.robot.util.ControllerState;
@@ -60,21 +61,21 @@ public class Robot extends TimedRobot {
      * 
      **/
     final double xSpeed = -m_xspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftY(), 0.08))
-        * frc.robot.Drivetrain.kMaxSpeed;
+        * frc.robot.TopStuff.Drivetrain.kMaxSpeed;
     /**
      * Get desired Y (strafe/sideways) speed of chassis.
      * Positive = left, negative = right.
      * XBox controllers return flipped values.
      **/
     final double ySpeed = -m_yspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftX(), 0.08))
-        * frc.robot.Drivetrain.kMaxSpeed;
+        * frc.robot.TopStuff.Drivetrain.kMaxSpeed;
     /**
      * Get desired rotation speed of chassis.
      * Positive = left, negative = right.
      * Xbox returns positive when holding right by default.
      **/
     final double rot = -m_rotLimiter.calculate(MathUtil.applyDeadband(xController.getRightX(), 0.12))
-        * frc.robot.Drivetrain.kMaxAngularSpeed; 
+        * frc.robot.TopStuff.Drivetrain.kMaxAngularSpeed; 
     m_swerve.drive(xSpeed, ySpeed, rot, fieldRelative);
   }
 
