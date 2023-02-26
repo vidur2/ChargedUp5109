@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.arm;
 
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;

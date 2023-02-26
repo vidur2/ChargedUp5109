@@ -2,10 +2,9 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.TopStuff;
+package frc.robot;
 
 import edu.wpi.first.wpilibj.SPI;
-import frc.robot.SwerveModule;
 import frc.robot.util.Constants;
 import frc.robot.util.VisionTrack;
 
@@ -95,7 +94,7 @@ public class Drivetrain {
   private float integral = 0.0f;
   public void autoBalance() // auto balance for the charging station
   {
-    float pitch = navX.getPitch() - Constants.kNavXOffset; //pitch is offset by 2
+    float pitch = navX.getPitch() - Constants.kNavXOffsetAlign; //pitch is offset by 2
     integral += pitch*0.01f;
     //System.out.println("Current Pitch: " + pitch);
     float P = 0.125f;

@@ -1,4 +1,4 @@
-package frc.robot;
+package frc.robot.arm;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
@@ -9,7 +9,6 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
-import frc.robot.util.TargetExtension;
 
 public class Arm {
     private Gripper m_gripper;

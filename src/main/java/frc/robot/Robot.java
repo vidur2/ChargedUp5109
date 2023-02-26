@@ -11,12 +11,12 @@ import javax.swing.text.StyleContext.SmallAttributeSet;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import frc.robot.TopStuff.Drivetrain;
 import frc.robot.util.ButtonState;
 import frc.robot.util.Constants;
 import frc.robot.util.ControllerState;
@@ -61,21 +61,21 @@ public class Robot extends TimedRobot {
      * 
      **/
     final double xSpeed = -m_xspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftY(), 0.08))
-        * frc.robot.TopStuff.Drivetrain.kMaxSpeed;
+        * frc.robot.Drivetrain.kMaxSpeed;
     /**
      * Get desired Y (strafe/sideways) speed of chassis.
      * Positive = left, negative = right.
      * XBox controllers return flipped values.
      **/
     final double ySpeed = -m_yspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftX(), 0.08))
-        * frc.robot.TopStuff.Drivetrain.kMaxSpeed;
+        * frc.robot.Drivetrain.kMaxSpeed;
     /**
      * Get desired rotation speed of chassis.
      * Positive = left, negative = right.
      * Xbox returns positive when holding right by default.
      **/
     final double rot = -m_rotLimiter.calculate(MathUtil.applyDeadband(xController.getRightX(), 0.12))
-        * frc.robot.TopStuff.Drivetrain.kMaxAngularSpeed; 
+        * frc.robot.Drivetrain.kMaxAngularSpeed; 
     m_swerve.drive(xSpeed, ySpeed, rot, fieldRelative);
   }
 
@@ -85,7 +85,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotInit() {
-    Constants.kNavXOffset = m_swerve.navX.getPitch();
+    Constants.kNavXOffsetAlign = m_swerve.navX.getPitch();
     // m_swerve.m_frontLeft.m_driveEncoder.setPosition(0);
     // m_swerve.m_frontRight.m_driveEncoder.setPosition(0);
     // m_swerve.m_backRight.m_driveEncoder.setPosition(0);
@@ -119,16 +119,18 @@ public class Robot extends TimedRobot {
   @Override
   public void robotPeriodic() {
     SmartDashboard.putData("Auto choices", m_chooser);
-    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getYaw());
     // SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
-    // SmartDashboard.putNumber("bRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
+    // SmartDashboard.putNumber("bpRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch() - Constants.kNavXOffset);
     double[] pose = m_swerve.visionTrack.getPose();
     SmartDashboard.putNumber("x", pose[0]);
     SmartDashboard.putNumber("y", pose[1]);
     SmartDashboard.putNumber("z", pose[2]);
+    SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch());
+    SmartDashboard.putNumber("roll", m_swerve.navX.getRoll());
   }
 
   /**

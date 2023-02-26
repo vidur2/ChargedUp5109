@@ -13,7 +13,6 @@ import com.revrobotics.CANSparkMaxLowLevel.MotorType;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import frc.robot.TopStuff.Drivetrain;
 import frc.robot.util.Constants;
 
 public class SwerveModule implements RevOptimization{
