@@ -84,14 +84,10 @@ public class Drivetrain {
     navX.resetDisplacement();
         
     // ntwrkInst.startClientTeam(5109);
-    m_frontLeft = new SwerveModule((int) swerveFrontLeftMotors[0], (int) swerveFrontLeftMotors[1],
-        (int) swerveFrontLeftMotors[2], swerveFrontLeftMotors[3]);
-    m_frontRight = new SwerveModule((int) swerveFrontRightMotors[0], (int) swerveFrontRightMotors[1],
-        (int) swerveFrontRightMotors[2], swerveFrontRightMotors[3]);
-    m_backLeft = new SwerveModule((int) swerveBackLeftMotors[0], (int) swerveBackLeftMotors[1],
-        (int) swerveBackLeftMotors[2], swerveBackLeftMotors[3]);
-    m_backRight = new SwerveModule((int) swerveBackRightMotors[0], (int) swerveBackRightMotors[1],
-        (int) swerveBackRightMotors[2], swerveBackRightMotors[3]);
+    m_frontLeft = new SwerveModule((int) swerveFrontLeftMotors[0], (int) swerveFrontLeftMotors[1]);
+    m_frontRight = new SwerveModule((int) swerveFrontRightMotors[0], (int) swerveFrontRightMotors[1]);
+    m_backLeft = new SwerveModule((int) swerveBackLeftMotors[0], (int) swerveBackLeftMotors[1]);
+    m_backRight = new SwerveModule((int) swerveBackRightMotors[0], (int) swerveBackRightMotors[1]);
 
     // m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
   }

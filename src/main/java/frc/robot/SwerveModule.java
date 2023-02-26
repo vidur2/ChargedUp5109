@@ -44,7 +44,7 @@ public class SwerveModule implements RevOptimization{
    * @param driveMotorChannel   ID for the drive motor.
    * @param turningMotorChannel ID for the turning motor.
    */
-  public SwerveModule(int driveMotorChannel, int turningMotorChannel, int canCoderId, double magOffset) {
+  public SwerveModule(int driveMotorChannel, int turningMotorChannel) {
 
     // Motor Instantiation
     m_driveMotor = new CANSparkMax(driveMotorChannel, MotorType.kBrushless);

@@ -42,10 +42,10 @@ public class Robot extends TimedRobot {
 
   private final XboxController xController = new XboxController(0);
 
-  private static final double[] frontLeftIds = { 15, 14, 4, 162.6 };// 100}; // back right?
-  private static final double[] frontRightIds = { 12, 13, 1, -163.213 };// (180 - 55) - 360}; // back left?
-  private static final double[] backLeftIds = { 18, 19, 3, 60.6 };// -5}; //front right?
-  private static final double[] backRightIds = { 16, 17, 2, -80.86 };// (180 + 40) - 360}; //front left?y
+  private static final double[] frontLeftIds = { 15, 14 };// 100}; // back right?
+  private static final double[] frontRightIds = { 12, 13 };// (180 - 55) - 360}; // back left?
+  private static final double[] backLeftIds = { 18, 19 };// -5}; //front right?
+  private static final double[] backRightIds = { 16, 17 };// (180 + 40) - 360}; //front left?y
 
   public final Drivetrain m_swerve = new Drivetrain(0, frontLeftIds, frontRightIds, backLeftIds,
   backRightIds);
