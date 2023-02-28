@@ -27,7 +27,7 @@ public class Drivetrain {
 
  
 
-  public static final double kMaxSpeed = 3; // 3 meters per second
+  public static final double kMaxSpeed = 10; // 3 meters per second
   public static final double kMaxAngularSpeed = 3 * Math.PI; // 1/2 rotation per second
 
   // Network Table instantiation
@@ -57,7 +57,7 @@ public class Drivetrain {
   public final SwerveDriveKinematics m_kinematics = new SwerveDriveKinematics(
       m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation);
 
-  // public final SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(m_kinematics, initialMeasurement);
+  // public final SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
 
   /**
    * Constructor for the swerve drivetrain
@@ -88,12 +88,13 @@ public class Drivetrain {
     m_backLeft = new SwerveModule((int) swerveBackLeftMotors[0], (int) swerveBackLeftMotors[1]);
     m_backRight = new SwerveModule((int) swerveBackRightMotors[0], (int) swerveBackRightMotors[1]);
 
-    // m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
+    m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
   }
   private float prevPitch = 0.0f;
   private float integral = 0.0f;
-  public void autoBalance() // auto balance for the charging station
+  public boolean autoBalance() // auto balance for the charging station
   {
+    boolean retVal = false;
     float pitch = navX.getPitch() - Constants.kNavXOffsetAlign; //pitch is offset by 2
     integral += pitch*0.01f;
     //System.out.println("Current Pitch: " + pitch);
@@ -109,14 +110,18 @@ public class Drivetrain {
       System.out.println("Speed: " + speed + " At Pitch: " + pitch);
 
       drive(-speed, 0, 0, Constants.kFieldRelative);
+      retVal = false;
     }
     else
     {
       drive(0, 0, 0, Constants.kFieldRelative);
       integral = 0.0f;
       prevPitch = 0.0f;
+      retVal = true;
     }
     prevPitch = pitch;
+
+    return retVal;
   }
 
   /**

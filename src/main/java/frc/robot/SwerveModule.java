@@ -91,7 +91,7 @@ public class SwerveModule implements RevOptimization{
     // kEncoderResolution);
 
     m_driveEncoder.setVelocityConversionFactor(1 / (kTicksPerWheelRadian) * kWheelRadius);
-    m_driveEncoder.setPositionConversionFactor(1 / (kTicksPerWheelRadian) * kWheelRadius);
+    m_driveEncoder.setPositionConversionFactor(42 / (kTicksPerWheelRadian) * kWheelRadius);
     m_turningEncoderRelative.setPositionConversionFactor(1 /kTicksPerTurnerWheelRadian);
 
     // m_turningPIDController.enableContinuousInput(-Math.PI, Math.PI);

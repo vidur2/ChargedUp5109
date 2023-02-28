@@ -51,8 +51,9 @@ public class Robot extends TimedRobot {
   backRightIds);
   
   private ControllerState controllerState = new ControllerState();
-
-
+  
+  // Auton variables
+  private int m_autoCounter = 0;
 
   private void driveWithJoystick(boolean fieldRelative) {
     /**
@@ -105,6 +106,9 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("z", pose[2]);
     m_swerve.navX.reset();
     // m_swerve.m_odometry.resetPosition(m_swerve.navX.getRotation2d(), m_swerve.getPositions(), new Pose2d(new Translation2d(0, 0), m_swerve.navX.getRotation2d()));
+    Pose2d position = m_swerve.m_odometry.update(m_swerve.navX.getRotation2d(), m_swerve.getPositions());
+    SmartDashboard.putNumber("x_odom", position.getX()*55);
+    SmartDashboard.putNumber("y_odom", position.getY()*55);
     controllerState.addMethod(TeleopMethods.AutoBalance);
   
   }
@@ -120,10 +124,10 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
     SmartDashboard.putData("Auto choices", m_chooser);
     SmartDashboard.putNumber("yaw", m_swerve.navX.getYaw());
-    // SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
-    // SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
-    // SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
-    // SmartDashboard.putNumber("bpRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
+    SmartDashboard.putNumber("bRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch() - Constants.kNavXOffset);
     double[] pose = m_swerve.visionTrack.getPose();
     SmartDashboard.putNumber("x", pose[0]);
@@ -131,6 +135,9 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("z", pose[2]);
     SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch());
     SmartDashboard.putNumber("roll", m_swerve.navX.getRoll());
+    Pose2d position = m_swerve.m_odometry.update(m_swerve.navX.getRotation2d(), m_swerve.getPositions());
+    SmartDashboard.putNumber("x_odom", position.getX());
+    SmartDashboard.putNumber("y_odom", position.getY());
   }
 
   /**
@@ -156,6 +163,20 @@ public class Robot extends TimedRobot {
     switch (m_autoSelected) {
       case kCustomAuto:
         // Put custom auto code here
+        switch (m_autoCounter) {
+          case 0:
+            m_swerve.drive(-1, 0, 0, Constants.kFieldRelative);
+            if (Math.abs(m_swerve.navX.getPitch() - Constants.kNavXOffsetAlign) > 0.5) {
+              m_swerve.drive(0, 0, 0, Constants.kFieldRelative);
+              m_autoCounter++;
+            }
+            break;
+          case 1:
+            if (m_swerve.autoBalance()) {
+              m_autoCounter++;
+            }
+            break;
+        }
         break;
       case kDefaultAuto:
       default:
