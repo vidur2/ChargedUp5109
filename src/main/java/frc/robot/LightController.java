@@ -4,7 +4,6 @@ import edu.wpi.first.wpilibj.AddressableLED;
 import edu.wpi.first.wpilibj.AddressableLEDBuffer;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.interfaces.Accelerometer.Range;
 import frc.robot.util.ITest;
 
 public class LightController implements ITest {

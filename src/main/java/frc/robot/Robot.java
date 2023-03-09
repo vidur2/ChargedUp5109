@@ -4,22 +4,16 @@
 
 package frc.robot;
 
-import com.revrobotics.ControlType;
-import com.revrobotics.REVLibError;
-import com.revrobotics.CANSparkMax.IdleMode;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.arm.Arm;
-import frc.robot.arm.Gripper;
 import frc.robot.arm.TargetExtension;
 import frc.robot.drivetrain.Drivetrain;
 import frc.robot.util.ButtonState;
@@ -27,7 +21,6 @@ import frc.robot.util.Constants;
 import frc.robot.util.ControllerState;
 import frc.robot.util.DriverModes;
 import frc.robot.util.TeleopMethods;
-import frc.robot.util.VisionTrack;
 
 
 /**
@@ -155,7 +148,7 @@ public class Robot extends TimedRobot {
    */
   @Override
   public void robotPeriodic() {
-    m_swerve.visionTrack.updateVision(m_swerve.navX);
+    m_swerve.visionTrack.updateVision();
     SmartDashboard.putData("Auto choices", m_chooser);
     SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
     SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
@@ -251,7 +244,7 @@ public class Robot extends TimedRobot {
     handleDebounce(xController.getXButton(), TeleopMethods.AutoBalance);
     m_swerve.setMaxSpeed(m_driveMode.checkState(xController));
     // if (xController.getAButton()) {
-    //   m_swerve.autoBalance(1);
+    //   m_swerve.autoBalance(-1);
     // }
 
     if (xController.getXButton())

@@ -2,8 +2,6 @@ package frc.robot.util;
 
 import java.util.HashMap;
 
-import edu.wpi.first.wpilibj.PS4Controller.Button;
-
 public class ControllerState {
 
     private HashMap<TeleopMethods, ButtonState> methods = new HashMap<TeleopMethods, ButtonState>();

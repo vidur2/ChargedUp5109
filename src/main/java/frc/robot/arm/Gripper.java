@@ -1,9 +1,7 @@
 package frc.robot.arm;
 
-import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.PneumaticsModuleType;
 import edu.wpi.first.wpilibj.Solenoid;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
 import frc.robot.util.IInit;
 import frc.robot.util.ITest;
 

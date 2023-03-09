@@ -6,27 +6,20 @@ package frc.robot.drivetrain;
 
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj2.command.ProfiledPIDSubsystem;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import frc.robot.util.Constants;
 import frc.robot.util.VisionTrack;
-
-import java.lang.ModuleLayer.Controller;
 
 import com.kauailabs.navx.frc.*;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
-import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
-import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.*;
 import edu.wpi.first.math.controller.HolonomicDriveController;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.ProfiledPIDController;
-import edu.wpi.first.math.controller.RamseteController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -105,9 +98,8 @@ public class Drivetrain {
     m_frontRight = new SwerveModule(swerveFrontRightMotors[0], swerveFrontRightMotors[1]);
     m_backLeft = new SwerveModule(swerveBackLeftMotors[0], swerveBackLeftMotors[1]);
     m_backRight = new SwerveModule(swerveBackRightMotors[0], swerveBackRightMotors[1]);
-    
-    m_poseEstimator = new SwerveDrivePoseEstimator(m_kinematics, navX.getRotation2d(), getPositions(), visionTrack.getPose2d(navX));
-    visionTrack = new VisionTrack(ntwrkInst, m_poseEstimator);
+    visionTrack = new VisionTrack(ntwrkInst, m_poseEstimator, navX);
+    m_poseEstimator = new SwerveDrivePoseEstimator(m_kinematics, navX.getRotation2d(), getPositions(), visionTrack.getPose2d());
     m_holonomicDriveController.setTolerance(new Pose2d(0.2, 0.2, Rotation2d.fromDegrees(1)));
   }
 
