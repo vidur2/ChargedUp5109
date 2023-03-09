@@ -2,7 +2,7 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot;
+package frc.robot.drivetrain;
 
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
@@ -130,28 +130,14 @@ public class SwerveModule implements RevOptimization{
    */
   public void setDesiredState(SwerveModuleState state) {
     state = optimize(state, new Rotation2d(m_turningEncoderRelative.getPosition()));
-    // System.out.println(state.angle.getRadians() - m_turningEncoderRelative.getPosition());
-    // final double deltaAngle = state.angle.getRadians() - currentAngle.getRadians();
-
-    // System.out.println("deltaAngle " + deltaAngle);
-    // System.out.println("encoderPos " + m_turningEncoderRelative.getPosition());
-    // System.out.println("Encoder "+ m_turningEncoderAbsolute.getPosition());
-
-    //System.out.println("Relative:" + m_turningEncoderRelative.getPosition());
-
-    
-    // double diffAngle = deltaAngle + m_turningEncoderRelative.getPosition();
-  //  diffAngle = diffAngle % 2 * Math.PI;
-  //   diffAngle = (diffAngle + 2 * Math.PI) % 2 * Math.PI;
-  //   if (diffAngle > Math.PI) diffAngle -= 2 * Math.PI;
-    // double finalAngle = (deltaAngle) / (2 * Math.PI);
- 
-    
-
-    // System.out.pr  intln("final angle: "+ diffAngle);
-    // state = SwerveModuleState.optimize(state, new Rotation2d(m_turningEncoderRelative.getPosition()));
     m_drivePIDController.setReference(state.speedMetersPerSecond, ControlType.kVelocity);
     m_turningPIDController.setReference(state.angle.getRadians(), ControlType.kPosition);
+  }
+
+  public void alignWheel() {
+    double currPose = m_turningEncoderRelative.getPosition();
+
+    m_driveMotor.set(-currPose);
   }
 
   public void testEncoder() {
