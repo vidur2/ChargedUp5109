@@ -84,7 +84,7 @@ public class Arm implements ITest, IInit {
                 targetPose = new Translation2d(Math.sqrt(Math.pow(extension, 2) - Math.pow(kConeHeight, 2)), kConeHeight + kTreyHeight).minus(kAxisofRotation);
                 break;
             case kLow:
-                targetPose = new Translation2d(Math.sqrt(Math.pow(extension, 2) - Math.pow(kConeHeight, 2)), Math.pow(kConeHeight, 2)).minus(kAxisofRotation);
+                targetPose = new Translation2d(Math.sqrt(Math.pow(extension, 2) - Math.pow(kConeHeight, 2)), kConeHeight).minus(kAxisofRotation);
                 break;
             case kMid:
                 return;
