@@ -116,7 +116,7 @@ public class Arm implements ITest, IInit {
     }
 
     public void place(TargetExtension target) {
-        m_gripper.grip();
+        // m_gripper.grip();
         m_rotatorController.setReference(0, ControlType.kPosition);
         switch (target) {
             case kHigh:
@@ -128,7 +128,7 @@ public class Arm implements ITest, IInit {
             case kLow:
                 break;
         }
-        m_gripper.release();
+        // m_gripper.release();
     }
 
     @Override
