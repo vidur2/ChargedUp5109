@@ -46,6 +46,20 @@ public class LightController implements ITest {
         m_addressableLED.setData(m_ledBuffer);
         m_addressableLED.start();
     }
+    
+    // sets the lightstrips to be unicorn vomit
+    public void setUnicornVomit(int offset) {
+        int hueVal = 0;
+        for (int i = 0; i < m_ledBuffer.getLength(); i++) {
+            m_ledBuffer.setHSV(i, (int)(((double)hueVal / (double)m_ledBuffer.getLength() + 40) * 180) + offset,255, 255);
+            hueVal += 1;
+            if (i % 26 == 0) {
+                hueVal += 10;
+            }
+        }
+        m_addressableLED.setData(m_ledBuffer);
+        m_addressableLED.start();
+    }
 
     @Override
     public void test(boolean buttonPress)

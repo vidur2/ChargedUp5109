@@ -4,10 +4,16 @@
 
 package frc.robot;
 
+import com.revrobotics.CANSparkMax.ControlType;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
@@ -35,6 +41,8 @@ public class Robot extends TimedRobot {
 
   private static final String kKevinMode = "kKevinMode";
   private static final String kWillMode = "kWillMode";
+
+  private final LightController m_lightController = new LightController(0, 50+77);
   
   private String m_autoSelected;
 
@@ -70,14 +78,14 @@ public class Robot extends TimedRobot {
      * Inverted since Xbox joysticks return flipped values.
      * 
      **/
-    final double xSpeed = -m_xspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftY(), 0.08))
+    final double xSpeed = -m_xspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftY(), 0.2))
         * m_swerve.m_maxSpeed;
     /**
      * Get desired Y (strafe/sideways) speed of chassis.
      * Positive = left, negative = right.
      * XBox controllers return flipped values.
      **/
-    final double ySpeed = -m_yspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftX(), 0.12))
+    final double ySpeed = -m_yspeedLimiter.calculate(MathUtil.applyDeadband(xController.getLeftX(), 0.2))
         * m_swerve.m_maxSpeed;
     /**
      * Get desired rotation speed of chassis.
@@ -88,7 +96,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("driveY", ySpeed);
     SmartDashboard.putBoolean("isClamping", m_arm.getClamping());
     final double rot = -m_rotLimiter.calculate(MathUtil.applyDeadband(xController.getRightX(), 0.12))
-        * frc.robot.drivetrain.Drivetrain.kMaxAngularSpeed; 
+        * frc.robot.drivetrain.Drivetrain.kMaxAngularSpeed;
+       
     m_swerve.drive(xSpeed, ySpeed, rot, fieldRelative);
   }
 
@@ -119,6 +128,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("roll", m_swerve.navX.getRoll() - Constants.kNavXOffsetAlign);
     SmartDashboard.putNumber("kevinMultiplier", 0.2);
     SmartDashboard.putNumber("speedOutput", 0);
+    SmartDashboard.putNumber("ff", m_arm.m_armFeedForward.calculate(Math.PI, 0));
     SmartDashboard.putNumber("autoCounter", m_autoCounter);
     SmartDashboard.putNumber("extenderPosition", m_arm.m_extenderEncoder.getPosition());
     // SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
@@ -126,15 +136,15 @@ public class Robot extends TimedRobot {
     // SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("bRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
     double[] pose = m_swerve.visionTrack.getPose();
-    SmartDashboard.putNumber("x", pose[0]);
-    SmartDashboard.putNumber("y", pose[1]);
+    SmartDashboard.putNumber("x", pose[1]);
+    SmartDashboard.putNumber("y", pose[0]);
     SmartDashboard.putNumber("z", pose[2]);
     m_swerve.navX.reset();
     SmartDashboard.putBoolean("reachedPosition", false);
     // m_swerve.m_odometry.resetPosition(m_swerve.navX.getRotation2d(), m_swerve.getPositions(), new Pose2d(new Translation2d(0, 0), m_swerve.navX.getRotation2d()));
     Pose2d position = m_swerve.m_poseEstimator.update(m_swerve.navX.getRotation2d(), m_swerve.getPositions());
-    SmartDashboard.putNumber("x_odom", position.getX()*55);
-    SmartDashboard.putNumber("y_odom", position.getY()*55);
+    SmartDashboard.putNumber("x_odom", position.getX());
+    SmartDashboard.putNumber("y_odom", position.getY());
     controllerState.addMethod(TeleopMethods.AutoBalance);
   
   }
@@ -157,8 +167,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("bRightEnc", m_swerve.m_backLeft.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch() - Constants.kNavXOffset);
     double[] pose = m_swerve.visionTrack.getPose();
-    SmartDashboard.putNumber("x", pose[0]);
-    SmartDashboard.putNumber("y", pose[1]);
+    SmartDashboard.putNumber("x", pose[1]);
+    SmartDashboard.putNumber("y", pose[0]);
     SmartDashboard.putNumber("z", pose[2]);
     SmartDashboard.putNumber("rotatorPosition", m_arm.m_rotatorEncoder.getPosition());
     SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch());
@@ -182,8 +192,10 @@ public class Robot extends TimedRobot {
   @Override
   public void autonomousInit() {
     Constants.kNavXOffsetAlign = m_swerve.navX.getRoll();
+    m_lightController.setAllianceColor(DriverStation.getAlliance());
     m_autoSelected = m_chooser.getSelected();
     m_swerve.navX.setAngleAdjustment(180);
+    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
     m_autoCounter = 0;
     m_arm.initAuto();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
@@ -210,22 +222,28 @@ public class Robot extends TimedRobot {
               m_autoCounter++;
             }
             break;
+          case 2:
+            m_lightController.setBalanceColor();
+            m_autoCounter++;
+            break;
         }
         break;
       case kDefaultAuto:
       default:
-        // Put default auto code here
+      Pose2d target = m_swerve.m_poseEstimator.getEstimatedPosition().plus(new Transform2d(new Translation2d(-1, 0), Rotation2d.fromRadians(m_swerve.navX.getAngle())));
+        m_swerve.driveTo(target);
         break;
     }
 
     SmartDashboard.putNumber("autoCounter", m_autoCounter);
   }
 
+  boolean prevYButton, prevBButton, prevAButton, prevRightBumper = false;
+
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
     m_arm.initAuto();
-    // m_swerve.navX.setAngleAdjustment(0);
     switch (m_teleopChooser.getSelected()) {
       case kKevinMode:
         m_driveMode = DriverModes.kKevinMode;
@@ -234,19 +252,18 @@ public class Robot extends TimedRobot {
         m_driveMode = DriverModes.kWillMode;
         break;
     }
+    m_swerve.navX.setAngleAdjustment(0);
+    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
+    // m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), new Pose2d());
     m_swerve.resetEncoders();
   }
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    driveWithJoystick(Constants.kFieldRelative);
-    handleDebounce(xController.getXButton(), TeleopMethods.AutoBalance);
+    m_lightController.setUnicornVomit((int)(-m_swerve.navX.getAngle()/2));
     m_swerve.setMaxSpeed(m_driveMode.checkState(xController));
-    // if (xController.getAButton()) {
-    //   m_swerve.autoBalance(-1);
-    // }
-
+    driveWithJoystick(true);
     if (xController.getXButton())
     {
       m_arm.release();
@@ -268,10 +285,18 @@ public class Robot extends TimedRobot {
       m_arm.place(TargetExtension.kHigh);
     }
 
+    if (!xController.getRightBumper() && prevRightBumper) {
+      // pickupStation();
+      m_arm.pickupCone(Units.inchesToMeters(49), TargetExtension.kLow, true);
+    } else {
+      //driveWithJoystick(true);
+    }
+
 
     prevYButton = xController.getYButton();
     prevBButton = xController.getBButton();
     prevAButton = xController.getAButton();
+    prevRightBumper = xController.getRightBumper();
     // m_swerve.drive(1, 0, 0, true);
   }
 
@@ -282,61 +307,60 @@ public class Robot extends TimedRobot {
   /** This function is called periodically when disabled. */
   @Override
   public void disabledPeriodic() {
-    m_swerve.align();
+    // m_swerve.align();
   }
   boolean m_reached = false;
-  
   /** This function is called once when test mode is enabled. */
   @Override
   public void testInit() {
     m_swerve.resetEncoders();
-    // m_reached = false;
-    // m_swerve.navX.setAngleAdjustment(0);
-    // m_swerve.m_poseEstimator.resetPosition(m_swerve.navX.getRotation2d(), m_swerve.getPositions(), new Pose2d());
+    m_lightController.setAllianceColor(DriverStation.getAlliance());
     m_arm.initAuto();
-    // m_arm.m_rotatorEncoder.setPosition(0);
-    // m_arm.m_extenderController.setReference(-0.6, com.revrobotics.CANSparkMax.ControlType.kPosition);
-    // m_arm.m_rotatorController.setReference(0, com.revrobotics.CANSparkMax.ControlType.kPosition);
-    Timer.delay(0.1);
-    // m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
+    // System.out.println(Units.inchesToMeters(49));
+    // m_arm.m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
+    m_arm.m_rotatorController.setReference(0, ControlType.kSmartMotion);
   }
-
-  boolean prevYButton, prevBButton, prevAButton = false;
 
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
-    // m_arm.test(xController.getAButton());
-    // m_arm.m_gripper.test(xController.getAButton());
-    // if (xController.getAButton()) {
-    //   m_arm.m_extender.set(-0.3);
-    // } else {
-    //   m_arm.m_extender.set(0);
+    // if (xController.getXButton())
+    // {
+    //   m_arm.release();
     // }
-    if (xController.getXButton())
-    {
-      m_arm.release();
-    }
-    else
-    {
-      m_arm.grip();
-    }
-    if (xController.getYButton() == false && prevYButton == true)
-    {
-      m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
-    }
-    if (xController.getBButton() == false && prevBButton == true)
-    {
-      m_arm.reset();
-    }
-    if (xController.getAButton() == false && prevAButton == true)
-    {
-      m_arm.place(TargetExtension.kHigh);
-    }
+    // else
+    // {
+    //   m_arm.grip();
+    // }
+    // if (xController.getYButton() == false && prevYButton == true)
+    // {
+    //   m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
+    // }
+    // if (xController.getBButton() == false && prevBButton == true)
+    // {
+    //   m_arm.reset();
+    // }
+    // if (xController.getAButton() == false && prevAButton == true)
+    // {
+    //   m_arm.place(TargetExtension.kHigh);
+    // }
 
-    prevYButton = xController.getYButton();
-    prevBButton = xController.getBButton();
-    prevAButton = xController.getAButton();
+    // prevYButton = xController.getYButton();
+    // prevBButton = xController.getBButton();
+    // prevAButton = xController.getAButton();
+    // if (xController.getAButton()) {
+    //   m_arm.m_rotator.set(0.3);
+    // } else if (xController.getBButton()) {
+    //   m_arm.m_rotator.set(-0.3);
+    // } else {
+    //   m_arm.m_rotator.set(0);
+    // }
+
+    // if (xController.getBButton()) {
+    //   m_arm.m_rotator.set(-0.1);
+    // } else {
+    //   m_arm.m_rotator.set(0);
+    // }
   }
 
   public void handleDebounce(boolean buttonPress, TeleopMethods method) {
@@ -353,5 +377,11 @@ public class Robot extends TimedRobot {
     } else {
       state.pressed = false;
     }
+  }
+
+  private boolean pickupStation() {
+    boolean reached = m_swerve.driveTo(new Pose2d(new Translation2d(16/2, 6/2), new Rotation2d(Math.PI)));
+
+    return reached;
   }
 }

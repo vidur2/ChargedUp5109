@@ -39,13 +39,13 @@ public class VisionTrack {
     public Pose2d getPose2d() {
         double[] pose = getPose();
 
-        return new Pose2d(new Translation2d(pose[0], pose[1]), navX.getRotation2d());
+        return new Pose2d(new Translation2d(pose[1], pose[0]), navX.getRotation2d());
     }
 
     public void updateVision() {
         TimestampedDoubleArray arr = m_subscriber.getAtomic();
-        if (arr.timestamp != 0 && arr.timestamp != lastUpdate) {
-            Pose2d pose = new Pose2d(new Translation2d(arr.value[0], arr.value[1]), navX.getRotation2d());
+        if (arr.timestamp != 0 && arr.timestamp != lastUpdate && m_poseEstimator != null) {
+            Pose2d pose = new Pose2d(new Translation2d(arr.value[1], arr.value[0]), navX.getRotation2d());
             m_poseEstimator.addVisionMeasurement(pose, arr.timestamp * Math.pow(10, -6));
             lastUpdate = arr.timestamp;
         }

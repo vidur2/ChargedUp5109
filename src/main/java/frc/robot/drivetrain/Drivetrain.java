@@ -92,8 +92,6 @@ public class Drivetrain {
       int[] swerveBackLeftMotors, int[] swerveBackRightMotors) {
     navX.reset();
     navX.resetDisplacement();
-        
-    // ntwrkInst.startClientTeam(5109);
     m_frontLeft = new SwerveModule(swerveFrontLeftMotors[0], swerveFrontLeftMotors[1]);
     m_frontRight = new SwerveModule(swerveFrontRightMotors[0], swerveFrontRightMotors[1]);
     m_backLeft = new SwerveModule(swerveBackLeftMotors[0], swerveBackLeftMotors[1]);
