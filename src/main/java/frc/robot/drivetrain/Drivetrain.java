@@ -23,6 +23,7 @@ import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.wpilibj.DriverStation;
 
 /** Represents a swerve drive style drivetrain. */
@@ -34,7 +35,7 @@ public class Drivetrain {
   public static final double kMaxAngularSpeed = 3 * Math.PI; // 1/2 rotation per second
 
   // Network Table instantiation
-  private final NetworkTableInstance ntwrkInst = NetworkTableInstance.getDefault();
+  public final NetworkTableInstance ntwrkInst = NetworkTableInstance.getDefault();
   public VisionTrack visionTrack;
 
   // public NetworkTable ballAlignmentValues = ntwrkInst.getTable("ballAlignment");
@@ -59,7 +60,7 @@ public class Drivetrain {
   public SwerveDrivePoseEstimator m_poseEstimator;
 
   // Holonomic drive controlling stuff
-  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(1, 0, 0), new PIDController(1, 0, 0), new ProfiledPIDController(1, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
+  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(-1, 0, 0), new PIDController(-1, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
 
   // Shooter Range
   public double shooterRangeCm; // Enter shooter distance here (cm)
@@ -98,7 +99,7 @@ public class Drivetrain {
     m_backRight = new SwerveModule(swerveBackRightMotors[0], swerveBackRightMotors[1]);
     visionTrack = new VisionTrack(ntwrkInst, m_poseEstimator, navX);
     m_poseEstimator = new SwerveDrivePoseEstimator(m_kinematics, navX.getRotation2d(), getPositions(), visionTrack.getPose2d());
-    m_holonomicDriveController.setTolerance(new Pose2d(0.2, 0.2, Rotation2d.fromDegrees(1)));
+    m_holonomicDriveController.setTolerance(new Pose2d(0.2, 0.2, Rotation2d.fromDegrees(5)));
   }
 
   private float prevPitch = 0.0f;
@@ -216,7 +217,10 @@ public class Drivetrain {
   }
 
   public boolean driveTo(Pose2d target) {
-    ChassisSpeeds speed = m_holonomicDriveController.calculate(m_poseEstimator.getEstimatedPosition(), target, 0, target.getRotation());
+    System.out.println(target);
+    Pose2d curr = m_poseEstimator.getEstimatedPosition();
+    ChassisSpeeds speed = m_holonomicDriveController.calculate(curr, target, 0, target.getRotation());
+    speed.omegaRadiansPerSecond = 0;
     driveChassisSpeed(speed);
     return m_holonomicDriveController.atReference();
   }
@@ -226,5 +230,14 @@ public class Drivetrain {
     m_backRight.alignWheel();
     m_frontLeft.alignWheel();
     m_frontRight.alignWheel();
+  }
+
+  public void rotateToZero() {
+    while (Math.abs(navX.getYaw()) > 1) {
+      SmartDashboard.putNumber("yaw", navX.getYaw());
+      drive(0, 0, 0.1 * (navX.getYaw()), true);
+    }
+
+    drive(0, 0, 0, true);
   }
 }

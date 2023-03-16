@@ -13,6 +13,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.networktables.NetworkTableValue;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -123,7 +124,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("rotatorPosition", m_arm.m_rotatorEncoder.getPosition());
     SmartDashboard.putNumber("driveX", 0);
     SmartDashboard.putNumber("driveY", 0);
-    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getYaw());
     SmartDashboard.putNumber("speedOutput", 0);
     SmartDashboard.putNumber("roll", m_swerve.navX.getRoll() - Constants.kNavXOffsetAlign);
     SmartDashboard.putNumber("kevinMultiplier", 0.2);
@@ -142,7 +143,7 @@ public class Robot extends TimedRobot {
     m_swerve.navX.reset();
     SmartDashboard.putBoolean("reachedPosition", false);
     // m_swerve.m_odometry.resetPosition(m_swerve.navX.getRotation2d(), m_swerve.getPositions(), new Pose2d(new Translation2d(0, 0), m_swerve.navX.getRotation2d()));
-    Pose2d position = m_swerve.m_poseEstimator.update(m_swerve.navX.getRotation2d(), m_swerve.getPositions());
+    Pose2d position = m_swerve.m_poseEstimator.update(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions());
     SmartDashboard.putNumber("x_odom", position.getX());
     SmartDashboard.putNumber("y_odom", position.getY());
     controllerState.addMethod(TeleopMethods.AutoBalance);
@@ -160,7 +161,7 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
     m_swerve.visionTrack.updateVision();
     SmartDashboard.putData("Auto choices", m_chooser);
-    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getYaw());
     SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
     SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
     SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
@@ -174,10 +175,13 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch());
     SmartDashboard.putNumber("roll", m_swerve.navX.getRoll()- Constants.kNavXOffsetAlign);
     SmartDashboard.putNumber("extenderPosition", m_arm.m_extenderEncoder.getPosition());
-    Pose2d position = m_swerve.m_poseEstimator.update(m_swerve.navX.getRotation2d(), m_swerve.getPositions());
+    Pose2d position = m_swerve.m_poseEstimator.update(Rotation2d.fromDegrees(m_swerve.navX.getYaw()), m_swerve.getPositions());
     SmartDashboard.putNumber("x_odom", position.getX());
     SmartDashboard.putNumber("y_odom", position.getY());
+    m_swerve.ntwrkInst.getTable(Constants.kTableInstance).putValue("angle", NetworkTableValue.makeDouble(Rotation2d.fromDegrees(m_swerve.navX.getAngle()).getRadians()));
   }
+
+  Pose2d target;
 
   /**
    * This autonomous (along with the chooser code above) shows how to select between different
@@ -194,10 +198,12 @@ public class Robot extends TimedRobot {
     Constants.kNavXOffsetAlign = m_swerve.navX.getRoll();
     m_lightController.setAllianceColor(DriverStation.getAlliance());
     m_autoSelected = m_chooser.getSelected();
+    m_swerve.navX.reset();
     m_swerve.navX.setAngleAdjustment(180);
-    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
+    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getYaw()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
     m_autoCounter = 0;
     m_arm.initAuto();
+    target = new Pose2d(new Translation2d(5.5, -1), new Rotation2d(0));
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
   }
@@ -230,8 +236,8 @@ public class Robot extends TimedRobot {
         break;
       case kDefaultAuto:
       default:
-      Pose2d target = m_swerve.m_poseEstimator.getEstimatedPosition().plus(new Transform2d(new Translation2d(-1, 0), Rotation2d.fromRadians(m_swerve.navX.getAngle())));
-        m_swerve.driveTo(target);
+      // System.out.println(target);
+        // SmartDashboard.putBoolean("reachedPosition", m_swerve.driveTo(target));
         break;
     }
 
@@ -244,6 +250,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
     m_arm.initAuto();
+    m_swerve.navX.setAngleAdjustment(180);
     switch (m_teleopChooser.getSelected()) {
       case kKevinMode:
         m_driveMode = DriverModes.kKevinMode;
@@ -252,8 +259,7 @@ public class Robot extends TimedRobot {
         m_driveMode = DriverModes.kWillMode;
         break;
     }
-    m_swerve.navX.setAngleAdjustment(0);
-    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
+    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getYaw()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
     // m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), new Pose2d());
     m_swerve.resetEncoders();
   }
@@ -274,7 +280,8 @@ public class Robot extends TimedRobot {
     }
     if (xController.getYButton() == false && prevYButton == true)
     {
-      m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
+      //m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
+      m_swerve.rotateToZero();
     }
     if (xController.getBButton() == false && prevBButton == true)
     {
@@ -319,6 +326,8 @@ public class Robot extends TimedRobot {
     // System.out.println(Units.inchesToMeters(49));
     // m_arm.m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
     m_arm.m_rotatorController.setReference(0, ControlType.kSmartMotion);
+    m_swerve.navX.reset();
+    m_swerve.navX.setAngleAdjustment(180);
   }
 
   /** This function is called periodically during test mode. */
@@ -334,7 +343,9 @@ public class Robot extends TimedRobot {
     // }
     // if (xController.getYButton() == false && prevYButton == true)
     // {
-    //   m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
+    //   m_swerve.rotateToZero();
+    // } else {
+    //   driveWithJoystick(true);
     // }
     // if (xController.getBButton() == false && prevBButton == true)
     // {
@@ -345,7 +356,7 @@ public class Robot extends TimedRobot {
     //   m_arm.place(TargetExtension.kHigh);
     // }
 
-    // prevYButton = xController.getYButton();
+    prevYButton = xController.getYButton();
     // prevBButton = xController.getBButton();
     // prevAButton = xController.getAButton();
     // if (xController.getAButton()) {

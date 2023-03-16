@@ -31,7 +31,7 @@ public class Arm implements ITest, IInit {
 
 
     private final double kExtenderGearRatio = 100;
-    private final double kRotatorGearRatio = 4*4*3*30/9;
+    private final double kRotatorGearRatio = 4*4*3*24/9;
     private final double kPulleyRadiusInitial = Units.millisecondsToSeconds(29.4);
     private final double kArmMinExtension = Units.inchesToMeters(37);
     private final double kArmMidExtension = 1.5;
@@ -72,7 +72,7 @@ public class Arm implements ITest, IInit {
 
     private void setRotatorPid() {
         m_rotatorController.setSmartMotionMaxVelocity(Math.PI - 2, 0);
-        m_rotatorController.setSmartMotionMaxAccel(Math.PI - 3, 0);
+        m_rotatorController.setSmartMotionMaxAccel(Math.PI - 2.5, 0);
         m_rotatorController.setSmartMotionAllowedClosedLoopError(0.002 * 2 *Math.PI, 0);
         m_rotatorController.setSmartMotionMinOutputVelocity(0, 0);
         m_rotatorController.setSmartMotionAccelStrategy(AccelStrategy.kTrapezoidal, 0);
@@ -80,13 +80,12 @@ public class Arm implements ITest, IInit {
         m_rotatorController.setI(0);
         m_rotatorController.setIZone(0);
         m_rotatorController.setD(0.0000);
-        m_rotatorController.setFF(Math.abs(m_armFeedForward.calculate(Math.PI, 0)));
     }
 
     public void reset() {
         // m_gripper.grip();
         // m_extenderController.setReference(Units.inchesToMeters(37), ControlType.kPosition);
-        m_rotatorController.setReference(-Math.PI/2, ControlType.kSmartMotion);
+        m_rotatorController.setReference(-Math.PI/2, ControlType.kSmartMotion, 0, Math.abs(m_armFeedForward.calculate(0, 0)));
     }
 
     /**
@@ -121,7 +120,7 @@ public class Arm implements ITest, IInit {
 
     public void pickup(Rotation2d theta) {
         // m_gripper.grip();
-        m_rotatorController.setReference(theta.getRadians(), ControlType.kSmartMotion);
+        m_rotatorController.setReference(theta.getRadians(), ControlType.kSmartMotion, 0, Math.abs(m_armFeedForward.calculate(theta.getRadians(), 0)));
         // m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
         // m_gripper.release();
     }
@@ -135,7 +134,7 @@ public class Arm implements ITest, IInit {
 
     public void place(TargetExtension target) {
         // m_gripper.grip();
-        m_rotatorController.setReference(0, ControlType.kSmartMotion);
+        m_rotatorController.setReference(0, ControlType.kSmartMotion, 0, Math.abs(m_armFeedForward.calculate(Math.PI, 0)));
         switch (target) {
             case kHigh:
                 // m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
@@ -168,7 +167,7 @@ public class Arm implements ITest, IInit {
 
     @Override
     public void initAuto() {
-
+        
         m_rotatorEncoder.setPosition(-Math.PI/2);
         m_extenderEncoder.setPosition(kArmMinExtension);
         
