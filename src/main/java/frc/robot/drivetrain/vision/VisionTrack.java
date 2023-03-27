@@ -1,4 +1,4 @@
-package frc.robot.util;
+package frc.robot.drivetrain.vision;
 
 import java.util.ArrayList;
 
@@ -12,6 +12,8 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.TimestampedDoubleArray;
+import frc.robot.util.ArrayParser;
+import frc.robot.util.Constants;
 
 public class VisionTrack {
     private NetworkTableInstance ntwrkInst;

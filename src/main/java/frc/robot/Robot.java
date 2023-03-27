@@ -4,8 +4,13 @@
 
 package frc.robot;
 
+import java.util.HashMap;
+
 import com.revrobotics.CANSparkMax.ControlType;
 
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.cscore.CvSink;
+import edu.wpi.first.cscore.CvSource;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -15,6 +20,8 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.networktables.NetworkTableValue;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
@@ -23,6 +30,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.arm.Arm;
 import frc.robot.arm.TargetExtension;
 import frc.robot.drivetrain.Drivetrain;
+import frc.robot.drivetrain.vision.ScoringController;
 import frc.robot.util.ButtonState;
 import frc.robot.util.Constants;
 import frc.robot.util.ControllerState;
@@ -43,7 +51,7 @@ public class Robot extends TimedRobot {
   private static final String kKevinMode = "kKevinMode";
   private static final String kWillMode = "kWillMode";
 
-  private final LightController m_lightController = new LightController(0, 50+77);
+  private final LightController m_lightController = new LightController(0, 50+73);
   
   private String m_autoSelected;
 
@@ -58,7 +66,10 @@ public class Robot extends TimedRobot {
   private final SlewRateLimiter m_yspeedLimiter = new SlewRateLimiter(10);
   private final SlewRateLimiter m_rotLimiter = new SlewRateLimiter(1);
 
+  private boolean m_reached = true;
+
   private final XboxController xController = new XboxController(0);
+  private final Joystick jStick = new Joystick(1);
 
   private static final int[] frontLeftIds = { 15, 14 };// 100}; // back right?
   private static final int[] frontRightIds = { 12, 13 };// (180 - 55) - 360}; // back left?
@@ -68,7 +79,19 @@ public class Robot extends TimedRobot {
   public final Drivetrain m_swerve = new Drivetrain(frontLeftIds, frontRightIds, backLeftIds,
   backRightIds);
   
+  private boolean m_aligning = false;
+
   private ControllerState controllerState = new ControllerState();
+
+  private Notifier m_placeNotifier;
+  private Notifier m_resetNotifier;
+  private Notifier m_pickupNotifier;
+  private Notifier m_coneNotifier;
+  private Notifier m_midNotifier;
+  private Notifier m_rotateNotifier;
+
+  private HashMap<Integer, Pose2d> m_scoringMap = new HashMap<>();
+  private ScoringController m_scoringController = new ScoringController(m_scoringMap);
   
   // Auton variables
   private int m_autoCounter = 0;
@@ -109,11 +132,59 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     Constants.kNavXOffsetAlign = m_swerve.navX.getRoll();
+    m_placeNotifier = new Notifier(new Runnable() {
+      public void run() {
+        m_arm.place();
+      }
+    });
+
+    SmartDashboard.putNumber("autonThing", 1);
+
+    m_pickupNotifier = new Notifier(new Runnable() {
+      public void run() {
+        m_arm.pickup();
+      }
+    });
+
+    m_resetNotifier = new Notifier(new Runnable() {
+      public void run() {
+        m_arm.reset();
+      }
+    });
+
+    m_coneNotifier = new Notifier(
+      new Runnable() 
+      {
+        public void run() 
+        {
+          m_arm.pickupCone();
+        }
+      }
+    );
+
+    m_rotateNotifier = new Notifier(
+      new Runnable() 
+      {
+        public void run() 
+        {
+          m_swerve.rotateToZero();
+        }
+      }
+    );
+
+    m_midNotifier = new Notifier(new Runnable() {
+      public void run() {
+        m_arm.place(TargetExtension.kMid);
+      }
+    });
     // m_swerve.m_frontLeft.m_driveEncoder.setPosition(0);
     // m_swerve.m_frontRight.m_driveEncoder.setPosition(0);
     // m_swerve.m_backRight.m_driveEncoder.setPosition(0);
     // m_swerve.m_backLeft.m_driveEncoder.setPosition(0);
     // m_swerve.navX.calibrate();
+    // CameraServer.startAutomaticCapture();
+    // CvSink cvSink = CameraServer.getVideo();
+    // CvSource outputStream = CameraServer.putVideo("Blur", 680, 420);
     m_chooser.setDefaultOption("Default Auto", kDefaultAuto);
     SmartDashboard.putBoolean("isClamping", m_arm.getClamping());
     m_chooser.addOption("My Auto", kCustomAuto);
@@ -124,7 +195,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("rotatorPosition", m_arm.m_rotatorEncoder.getPosition());
     SmartDashboard.putNumber("driveX", 0);
     SmartDashboard.putNumber("driveY", 0);
-    SmartDashboard.putNumber("yaw", m_swerve.navX.getYaw());
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
     SmartDashboard.putNumber("speedOutput", 0);
     SmartDashboard.putNumber("roll", m_swerve.navX.getRoll() - Constants.kNavXOffsetAlign);
     SmartDashboard.putNumber("kevinMultiplier", 0.2);
@@ -147,7 +218,8 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("x_odom", position.getX());
     SmartDashboard.putNumber("y_odom", position.getY());
     controllerState.addMethod(TeleopMethods.AutoBalance);
-  
+    m_scoringMap.put(6, new Pose2d(6.991, -3.8681, Rotation2d.fromDegrees(0)));
+    m_scoringMap.put(7, new Pose2d(6.991, -2.5685, Rotation2d.fromDegrees(0)));
   }
 
   /**
@@ -161,7 +233,7 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
     m_swerve.visionTrack.updateVision();
     SmartDashboard.putData("Auto choices", m_chooser);
-    SmartDashboard.putNumber("yaw", m_swerve.navX.getYaw());
+    SmartDashboard.putNumber("yaw", m_swerve.navX.getAngle());
     SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
     SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
     SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
@@ -175,10 +247,10 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("pitch", m_swerve.navX.getPitch());
     SmartDashboard.putNumber("roll", m_swerve.navX.getRoll()- Constants.kNavXOffsetAlign);
     SmartDashboard.putNumber("extenderPosition", m_arm.m_extenderEncoder.getPosition());
-    Pose2d position = m_swerve.m_poseEstimator.update(Rotation2d.fromDegrees(m_swerve.navX.getYaw()), m_swerve.getPositions());
+    Pose2d position = m_swerve.m_poseEstimator.update(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions());
     SmartDashboard.putNumber("x_odom", position.getX());
     SmartDashboard.putNumber("y_odom", position.getY());
-    m_swerve.ntwrkInst.getTable(Constants.kTableInstance).putValue("angle", NetworkTableValue.makeDouble(Rotation2d.fromDegrees(m_swerve.navX.getAngle()).getRadians()));
+    // m_swerve.ntwrkInst.getTable(Constants.kTableInstance).putValue("angle", NetworkTableValue.makeDouble(Rotation2d.fromDegrees().getRadians()));
   }
 
   Pose2d target;
@@ -200,12 +272,15 @@ public class Robot extends TimedRobot {
     m_autoSelected = m_chooser.getSelected();
     m_swerve.navX.reset();
     m_swerve.navX.setAngleAdjustment(180);
-    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getYaw()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
+    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
     m_autoCounter = 0;
-    m_arm.initAuto();
-    target = new Pose2d(new Translation2d(5.5, -1), new Rotation2d(0));
-    // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
+    target = new Pose2d(new Translation2d(0, -2), new Rotation2d(0));
+    m_swerve.resetEncoders();
+    m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
+    Timer.delay(2);
+    m_arm.initAuto();
+    m_arm.m_gripper.grip();
   }
 
   /** This function is called periodically during autonomous. */
@@ -214,42 +289,123 @@ public class Robot extends TimedRobot {
 
     switch (m_autoSelected) {
       case kCustomAuto:
+        SmartDashboard.putNumber("autonThing", 0);
         // Put custom auto code here
         switch (m_autoCounter) {
           case 0:
-            m_swerve.drive(3, 0, 0, Constants.kFieldRelative);
-            if (Math.abs(m_swerve.navX.getRoll() - Constants.kNavXOffsetAlign) > 7) {
-              m_swerve.drive(0, 0, 0, Constants.kFieldRelative);
-              m_autoCounter++;
-            }
-            break;
+          m_arm.m_extenderController.setReference(Units.inchesToMeters(40), ControlType.kPosition);
+          Timer.delay(0.5);
+          m_autoCounter++;
+          break;
           case 1:
-            if (m_swerve.autoBalance(-1)) {
-              m_autoCounter++;
-            }
-            break;
+          m_arm.place(TargetExtension.kHigh);
+          m_swerve.drive(-1, 0, 0, true);
+          Timer.delay(1);
+          m_swerve.drive(0, 0, 0, true);
+          Timer.delay(0.5);
+          m_autoCounter++;
+          break;
           case 2:
-            m_lightController.setBalanceColor();
+          m_arm.m_gripper.release();
+          Timer.delay(2);
+          m_autoCounter++;
+          break;
+          case 3:
+            m_arm.m_gripper.grip();
+            m_swerve.drive(2, 0, 0, true);
+            Timer.delay(3);
+            m_swerve.drive(0, 0, 0, true);
+            m_arm.reset();
             m_autoCounter++;
-            break;
+            break;  
+        //   case 0:
+        // m_arm.m_extenderController.setReference(Units.inchesToMeters(40), ControlType.kPosition);
+        // Timer.delay(0.5);
+        // m_autoCounter++;
+        // break;
+        // case 1:
+        // m_arm.place(TargetExtension.kHigh);
+        // m_swerve.drive(-1, 0, 0, true);
+        // Timer.delay(1);
+        // m_swerve.drive(0, 0, 0, true);
+        // Timer.delay(0.5);
+        // m_autoCounter++;
+        // break;
+        // case 2:
+        // m_arm.m_gripper.release();
+        // Timer.delay(0.5);
+        // m_autoCounter++;
+        // break;
+        // case 3:
+        //   m_arm.m_gripper.grip();
+        //   m_swerve.drive(2, 0, 0, true);
+        //   m_arm.reset();
+        //   m_autoCounter++;
+        //   break;
+        //   case 4:
+        //   if (Math.abs(m_swerve.navX.getRoll())  - Constants.kNavXOffsetAlign > 4)  {
+        //     m_swerve.drive(0, 0, 0, true);
+        //     m_autoCounter++;
+        //   }  
+        //   break;
+        //   case 5:
+        //   boolean balanced = m_swerve.autoBalance();
+
+        //   if (balanced) {
+        //     m_autoCounter++;
+        //   }
+        //   break;
+        //   case 6:
+        //   m_lightController.setBalanceColor();
         }
         break;
       case kDefaultAuto:
       default:
-      // System.out.println(target);
-        // SmartDashboard.putBoolean("reachedPosition", m_swerve.driveTo(target));
+      switch(m_autoCounter) {
+        case 0:
+        m_arm.m_extenderController.setReference(Units.inchesToMeters(40), ControlType.kPosition);
+        Timer.delay(0.5);
+        m_autoCounter++;
         break;
+        case 1:
+        m_arm.place(TargetExtension.kHigh);
+        m_swerve.drive(-1, 0, 0, true);
+        Timer.delay(1);
+        m_swerve.drive(0, 0, 0, true);
+        Timer.delay(0.5);
+        m_autoCounter++;
+        break;
+        case 2:
+        m_arm.m_gripper.release();
+        Timer.delay(2);
+        m_autoCounter++;
+        break;
+        case 3:
+          m_arm.m_gripper.grip();
+          m_swerve.drive(2, 0, 0, true);
+          Timer.delay(3);
+          m_swerve.drive(0, 0, 0, true);
+          m_arm.reset();
+          m_autoCounter++;
+          break;
+      }
     }
 
     SmartDashboard.putNumber("autoCounter", m_autoCounter);
   }
 
-  boolean prevYButton, prevBButton, prevAButton, prevRightBumper = false;
+  boolean prevYButton, prev2Button, prevAButton, prevRightBumper = false;
 
   /** This function is called once when teleop is enabled. */
   @Override
   public void teleopInit() {
-    m_arm.initAuto();
+    m_reached = true;
+    m_aligning = false;
+
+    // Comment out these two lines
+    // m_arm.initAuto();
+    // m_swerve.navX.reset();  
+
     m_swerve.navX.setAngleAdjustment(180);
     switch (m_teleopChooser.getSelected()) {
       case kKevinMode:
@@ -259,18 +415,18 @@ public class Robot extends TimedRobot {
         m_driveMode = DriverModes.kWillMode;
         break;
     }
-    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getYaw()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
+    m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
     // m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), new Pose2d());
-    m_swerve.resetEncoders();
+    // m_swerve.resetEncoders();
   }
+//-2.8
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
     m_lightController.setUnicornVomit((int)(-m_swerve.navX.getAngle()/2));
     m_swerve.setMaxSpeed(m_driveMode.checkState(xController));
-    driveWithJoystick(true);
-    if (xController.getXButton())
+    if (xController.getRightTriggerAxis() > 0.5)
     {
       m_arm.release();
     }
@@ -278,33 +434,41 @@ public class Robot extends TimedRobot {
     {
       m_arm.grip();
     }
-    if (xController.getYButton() == false && prevYButton == true)
+    if (jStick.getRawButtonPressed(3))
     {
-      //m_arm.pickup(Rotation2d.fromRadians(-Math.PI));
-      m_swerve.rotateToZero();
+      m_pickupNotifier.startSingle(0.1);
     }
-    if (xController.getBButton() == false && prevBButton == true)
+    if (jStick.getRawButtonPressed(2))
     {
-      m_arm.reset();
+      m_resetNotifier.startSingle(0.1);
     }
-    if (xController.getAButton() == false && prevAButton == true)
+    if (jStick.getTriggerPressed())
     {
-      m_arm.place(TargetExtension.kHigh);
+      m_placeNotifier.startSingle(0.1);
     }
 
-    if (!xController.getRightBumper() && prevRightBumper) {
-      // pickupStation();
-      m_arm.pickupCone(Units.inchesToMeters(49), TargetExtension.kLow, true);
-    } else {
-      //driveWithJoystick(true);
+    if (jStick.getRawButtonPressed(4)) {
+      m_coneNotifier.startSingle(0.1);
+    }
+    if (xController.getYButtonPressed()) {
+      m_rotateNotifier.startSingle(0.1);
+    }
+    if (jStick.getRawButtonPressed(5)) {
+      m_midNotifier.startSingle(0.1);
+    }
+    if (m_scoringController.registerInput(jStick)) {
+      // m_swerve.rotateToZero();
+      m_reached = false;
     }
 
-
-    prevYButton = xController.getYButton();
-    prevBButton = xController.getBButton();
-    prevAButton = xController.getAButton();
-    prevRightBumper = xController.getRightBumper();
-    // m_swerve.drive(1, 0, 0, true);
+    if (xController.getAButtonPressed()) {
+      m_reached = true;
+    }
+    if (!m_reached) {
+      m_reached = m_swerve.driveTo(m_scoringController.continueInput());
+    }else {
+      driveWithJoystick(true);
+    }
   }
 
   /** This function is called once when the robot is disabled. */
@@ -316,7 +480,7 @@ public class Robot extends TimedRobot {
   public void disabledPeriodic() {
     // m_swerve.align();
   }
-  boolean m_reached = false;
+
   /** This function is called once when test mode is enabled. */
   @Override
   public void testInit() {
@@ -325,7 +489,7 @@ public class Robot extends TimedRobot {
     m_arm.initAuto();
     // System.out.println(Units.inchesToMeters(49));
     // m_arm.m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
-    m_arm.m_rotatorController.setReference(0, ControlType.kSmartMotion);
+    // m_arm.m_rotatorController.setReference(0, ControlType.kPosition);
     m_swerve.navX.reset();
     m_swerve.navX.setAngleAdjustment(180);
   }
@@ -333,45 +497,13 @@ public class Robot extends TimedRobot {
   /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {
-    // if (xController.getXButton())
-    // {
-    //   m_arm.release();
-    // }
-    // else
-    // {
-    //   m_arm.grip();
-    // }
-    // if (xController.getYButton() == false && prevYButton == true)
-    // {
-    //   m_swerve.rotateToZero();
-    // } else {
-    //   driveWithJoystick(true);
-    // }
-    // if (xController.getBButton() == false && prevBButton == true)
-    // {
-    //   m_arm.reset();
-    // }
-    // if (xController.getAButton() == false && prevAButton == true)
-    // {
-    //   m_arm.place(TargetExtension.kHigh);
-    // }
-
-    prevYButton = xController.getYButton();
-    // prevBButton = xController.getBButton();
-    // prevAButton = xController.getAButton();
-    // if (xController.getAButton()) {
-    //   m_arm.m_rotator.set(0.3);
-    // } else if (xController.getBButton()) {
-    //   m_arm.m_rotator.set(-0.3);
-    // } else {
-    //   m_arm.m_rotator.set(0);
-    // }
-
-    // if (xController.getBButton()) {
-    //   m_arm.m_rotator.set(-0.1);
-    // } else {
-    //   m_arm.m_rotator.set(0);
-    // }
+    if (xController.getBButton()) {
+      m_arm.m_extender.set(-0.3);
+    } else if (xController.getAButton()) {
+      m_arm.m_extender.set(0.3);
+    } else {
+      m_arm.m_extender.set(0);
+    }
   }
 
   public void handleDebounce(boolean buttonPress, TeleopMethods method) {
@@ -379,7 +511,7 @@ public class Robot extends TimedRobot {
 
     if (!state.pressed) {
       if (buttonPress && state.state) {
-        m_swerve.autoBalance(1);
+        m_swerve.autoBalance();
       } else if (xController.getXButton()) {
         controllerState.changeMethodState(TeleopMethods.AutoBalance);
       }

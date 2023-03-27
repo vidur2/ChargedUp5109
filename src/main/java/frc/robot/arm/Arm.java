@@ -14,6 +14,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.ProfiledPIDCommand;
 import frc.robot.util.IInit;
 import frc.robot.util.ITest;
@@ -33,9 +34,9 @@ public class Arm implements ITest, IInit {
     private final double kExtenderGearRatio = 100;
     private final double kRotatorGearRatio = 4*4*3*24/9;
     private final double kPulleyRadiusInitial = Units.millisecondsToSeconds(29.4);
-    private final double kArmMinExtension = Units.inchesToMeters(37);
+    private final double kArmMinExtension = Units.inchesToMeters(35);
     private final double kArmMidExtension = 1.5;
-    private final double kArmMaxExtension = Units.inchesToMeters(49);
+    private final double kArmMaxExtension = Units.inchesToMeters(51);
     private final double kArmMaxRotation = 0;
     private final Translation2d kAxisofRotation = new Translation2d(0, 1.3335);
     private final double kConeHeight = 15.92/100;
@@ -71,21 +72,28 @@ public class Arm implements ITest, IInit {
     
 
     private void setRotatorPid() {
-        m_rotatorController.setSmartMotionMaxVelocity(Math.PI - 2, 0);
-        m_rotatorController.setSmartMotionMaxAccel(Math.PI - 2.5, 0);
-        m_rotatorController.setSmartMotionAllowedClosedLoopError(0.002 * 2 *Math.PI, 0);
-        m_rotatorController.setSmartMotionMinOutputVelocity(0, 0);
-        m_rotatorController.setSmartMotionAccelStrategy(AccelStrategy.kTrapezoidal, 0);
-        m_rotatorController.setP(0.00002);
-        m_rotatorController.setI(0);
-        m_rotatorController.setIZone(0);
-        m_rotatorController.setD(0.0000);
+        // m_rotatorController.setSmartMotionMaxVelocity(3 *2 * Math.PI, 0);
+        // m_rotatorController.setSmartMotionMaxAccel(Math.PI, 0);
+        // m_rotatorController.setSmartMotionAllowedClosedLoopError(0.02 * 2 *Math.PI, 0);
+        // m_rotatorController.setSmartMotionMinOutputVelocity(0, 0);
+        // m_rotatorController.setSmartMotionAccelStrategy(AccelStrategy.kTrapezoidal, 0);
+        // m_rotatorController.setP(0.0016);
+        // m_rotatorController.setI(0);
+        // m_rotatorController.setIZone(0);
+        // m_rotatorController.setD(0.0000);
+        m_rotatorController.setP(0.2);
+        m_rotatorController.setI(0.00003);
+        m_rotatorController.setIMaxAccum(0.4, 0);
+        m_rotatorController.setD(0);
+        // m_rotatorController.setFF(0.84);
     }
 
     public void reset() {
         // m_gripper.grip();
-        // m_extenderController.setReference(Units.inchesToMeters(37), ControlType.kPosition);
-        m_rotatorController.setReference(-Math.PI/2, ControlType.kSmartMotion, 0, Math.abs(m_armFeedForward.calculate(0, 0)));
+        m_extenderController.setReference(Units.inchesToMeters(35), ControlType.kPosition);
+        Timer.delay(.5);
+        m_rotatorController.setReference(-Math.PI/2, ControlType.kPosition);
+        
     }
 
     /**
@@ -113,16 +121,24 @@ public class Arm implements ITest, IInit {
         if (!forward) {
             targetPose = new Translation2d(-targetPose.getX(), targetPose.getY());
         }
+        m_rotatorController.setReference(-Math.PI/2 + Math.PI/12, ControlType.kPosition);
+        Timer.delay(0.4);
+        m_extenderController.setReference(Units.inchesToMeters(55), ControlType.kPosition);
+    }
 
-        // m_extenderController.setReference(extension, ControlType.kPosition);
-        m_rotatorController.setReference(targetPose.getAngle().getRadians(), ControlType.kSmartMotion);
+    public void pickupCone() {
+        pickupCone(Units.inchesToMeters(49), TargetExtension.kLow, true);
     }
 
     public void pickup(Rotation2d theta) {
         // m_gripper.grip();
-        m_rotatorController.setReference(theta.getRadians(), ControlType.kSmartMotion, 0, Math.abs(m_armFeedForward.calculate(theta.getRadians(), 0)));
-        // m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
+        m_rotatorController.setReference(theta.getRadians(), ControlType.kPosition);
+        m_extenderController.setReference(Units.inchesToMeters(35), ControlType.kPosition);
         // m_gripper.release();
+    }
+
+    public void pickup() {
+        pickup(Rotation2d.fromRadians(-Math.PI));
     }
 
     public Translation3d getGripperPosition(Translation2d robotPosition) {
@@ -134,18 +150,23 @@ public class Arm implements ITest, IInit {
 
     public void place(TargetExtension target) {
         // m_gripper.grip();
-        m_rotatorController.setReference(0, ControlType.kSmartMotion, 0, Math.abs(m_armFeedForward.calculate(Math.PI, 0)));
         switch (target) {
             case kHigh:
-                // m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
+                m_rotatorController.setReference((Math.PI/12 + Math.PI/6)/2, ControlType.kPosition);
+                Timer.delay(1);
+                m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
                 break;
             case kMid:
-                // m_extenderController.setReference(1.5, ControlType.kPosition);
+                m_rotatorController.setReference(0, ControlType.kPosition);
                 break;
             case kLow:
                 break;
         }
         // m_gripper.release();
+    }
+
+    public void place() {
+        place(TargetExtension.kHigh);
     }
 
     @Override
@@ -158,11 +179,6 @@ public class Arm implements ITest, IInit {
         // {
         //     reset();
         // }
-        if (buttonPress) {
-            m_rotator.set(0.3);
-        } else {
-            m_rotator.set(0);
-        }
     }
 
     @Override

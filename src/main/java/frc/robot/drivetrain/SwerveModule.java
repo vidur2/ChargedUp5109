@@ -119,7 +119,7 @@ public class SwerveModule implements RevOptimization{
    * @return The current state of the module.
    */
   public SwerveModulePosition getState() {
-    return new SwerveModulePosition(m_driveEncoder.getPosition(),
+    return new SwerveModulePosition(-m_driveEncoder.getPosition(),
         Rotation2d.fromRadians(m_turningEncoderRelative.getPosition()));
   }
 
@@ -134,10 +134,12 @@ public class SwerveModule implements RevOptimization{
     m_turningPIDController.setReference(state.angle.getRadians(), ControlType.kPosition);
   }
 
-  public void alignWheel() {
+  public boolean alignWheel() {
     double currPose = m_turningEncoderRelative.getPosition();
 
-    m_driveMotor.set(-currPose);
+    m_turningMotor.set(-currPose);
+
+    return currPose < 0.5;
   }
 
   public void testEncoder() {

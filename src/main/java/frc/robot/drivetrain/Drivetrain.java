@@ -6,8 +6,13 @@ package frc.robot.drivetrain;
 
 import edu.wpi.first.wpilibj.SPI;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import frc.robot.drivetrain.vision.ScoringController;
+import frc.robot.drivetrain.vision.VisionTrack;
 import frc.robot.util.Constants;
-import frc.robot.util.VisionTrack;
+
+import java.util.HashMap;
+
+import javax.print.attribute.HashAttributeSet;
 
 import com.kauailabs.navx.frc.*;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -40,10 +45,6 @@ public class Drivetrain {
 
   // public NetworkTable ballAlignmentValues = ntwrkInst.getTable("ballAlignment");
 
-  private final float balanceP = .172f;
-  private final float balanceI = 0.0f;
-  private final float balanceD = 1.249f;
-
   // Bot measurements
   private final Translation2d m_frontLeftLocation = new Translation2d(0.2921, 0.2921);
   private final Translation2d m_frontRightLocation = new Translation2d(0.2921, -0.2921);
@@ -60,7 +61,7 @@ public class Drivetrain {
   public SwerveDrivePoseEstimator m_poseEstimator;
 
   // Holonomic drive controlling stuff
-  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(-1, 0, 0), new PIDController(-1, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
+  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(2, 0, 0), new PIDController(16, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
 
   // Shooter Range
   public double shooterRangeCm; // Enter shooter distance here (cm)
@@ -99,14 +100,14 @@ public class Drivetrain {
     m_backRight = new SwerveModule(swerveBackRightMotors[0], swerveBackRightMotors[1]);
     visionTrack = new VisionTrack(ntwrkInst, m_poseEstimator, navX);
     m_poseEstimator = new SwerveDrivePoseEstimator(m_kinematics, navX.getRotation2d(), getPositions(), visionTrack.getPose2d());
-    m_holonomicDriveController.setTolerance(new Pose2d(0.2, 0.2, Rotation2d.fromDegrees(5)));
+    m_holonomicDriveController.setTolerance(new Pose2d(0, 0, Rotation2d.fromDegrees(5)));
   }
 
   private float prevPitch = 0.0f;
   private float integral = 0.0f;
-  public boolean autoBalance(double scalar) // auto balance for the charging station
+  public boolean autoBalance() // auto balance for the charging station
   {
-    boolean retVal = false;
+    /*boolean retVal = false;
     float pitch = navX.getRoll() - Constants.kNavXOffsetAlign; //pitch is offset by 2
     integral += pitch*0.01f;
     //System.out.println("Current Pitch: " + pitch);
@@ -132,7 +133,33 @@ public class Drivetrain {
     }
     prevPitch = pitch;
 
-    return retVal;
+    return retVal;*/
+    
+    float pitch = navX.getRoll() - Constants.kNavXOffsetAlign; //pitch is offset by 2
+    // constants
+    float kRateOfChangeThreshold = 0.13f;
+    float kDriveSpeed = 0.68f; // m/s
+    float kDeadzone = 1f; //degrees (2.5 is max allowed on docs)
+
+    if ((pitch - prevPitch) / 20f >= kRateOfChangeThreshold)
+    {
+      drive(0, 0, 0, true);
+      System.out.println("hit threshold");
+      return false;
+    }
+    else if (Math.abs(pitch) <= kDeadzone)
+    {
+      drive(0, 0, 0, true);
+      System.out.println("balanced.");
+      return true;
+    }
+    else
+    {
+      drive(kDriveSpeed, 0, 0, true);
+    }
+
+    prevPitch = pitch;
+    return false;
   }
 
   /**
@@ -225,15 +252,18 @@ public class Drivetrain {
     return m_holonomicDriveController.atReference();
   }
 
-  public void align() {
-    m_backLeft.alignWheel();
-    m_backRight.alignWheel();
-    m_frontLeft.alignWheel();
-    m_frontRight.alignWheel();
+  public boolean align() {
+    boolean aligned = true;
+    aligned = aligned && m_backLeft.alignWheel();
+    aligned = aligned && m_backRight.alignWheel();
+    aligned = aligned && m_frontLeft.alignWheel();
+    aligned = aligned && m_frontRight.alignWheel();
+
+    return aligned;
   }
 
   public void rotateToZero() {
-    while (Math.abs(navX.getYaw()) > 1) {
+    while (Math.abs(navX.getYaw()) > 2) {
       SmartDashboard.putNumber("yaw", navX.getYaw());
       drive(0, 0, 0.1 * (navX.getYaw()), true);
     }
