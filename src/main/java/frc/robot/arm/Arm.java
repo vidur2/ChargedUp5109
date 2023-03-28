@@ -81,8 +81,8 @@ public class Arm implements ITest, IInit {
         // m_rotatorController.setI(0);
         // m_rotatorController.setIZone(0);
         // m_rotatorController.setD(0.0000);
-        m_rotatorController.setP(0.2);
-        m_rotatorController.setI(0.00003);
+        m_rotatorController.setP(0.5);
+        m_rotatorController.setI(0);
         m_rotatorController.setIMaxAccum(0.4, 0);
         m_rotatorController.setD(0);
         // m_rotatorController.setFF(0.84);
@@ -127,7 +127,7 @@ public class Arm implements ITest, IInit {
     }
 
     public void pickupCone() {
-        pickupCone(Units.inchesToMeters(49), TargetExtension.kLow, true);
+        pickupCone(Units.inchesToMeters(53), TargetExtension.kLow, true);
     }
 
     public void pickup(Rotation2d theta) {
@@ -138,7 +138,7 @@ public class Arm implements ITest, IInit {
     }
 
     public void pickup() {
-        pickup(Rotation2d.fromRadians(-Math.PI));
+        pickup(Rotation2d.fromRadians(-Math.PI-Math.PI/24));
     }
 
     public Translation3d getGripperPosition(Translation2d robotPosition) {
@@ -152,9 +152,9 @@ public class Arm implements ITest, IInit {
         // m_gripper.grip();
         switch (target) {
             case kHigh:
-                m_rotatorController.setReference((Math.PI/12 + Math.PI/6)/2, ControlType.kPosition);
-                Timer.delay(1);
-                m_extenderController.setReference(Units.inchesToMeters(49), ControlType.kPosition);
+                m_rotatorController.setReference(Math.PI/8, ControlType.kPosition);
+                Timer.delay(0.2);
+                m_extenderController.setReference(Units.inchesToMeters(51.5), ControlType.kPosition);
                 break;
             case kMid:
                 m_rotatorController.setReference(0, ControlType.kPosition);
@@ -183,7 +183,6 @@ public class Arm implements ITest, IInit {
 
     @Override
     public void initAuto() {
-        
         m_rotatorEncoder.setPosition(-Math.PI/2);
         m_extenderEncoder.setPosition(kArmMinExtension);
         

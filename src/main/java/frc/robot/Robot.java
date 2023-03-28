@@ -403,8 +403,8 @@ public class Robot extends TimedRobot {
     m_aligning = false;
 
     // Comment out these two lines
-    // m_arm.initAuto();
-    // m_swerve.navX.reset();  
+    m_arm.initAuto();
+    m_swerve.navX.reset();  
 
     m_swerve.navX.setAngleAdjustment(180);
     switch (m_teleopChooser.getSelected()) {
@@ -417,14 +417,14 @@ public class Robot extends TimedRobot {
     }
     m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), m_swerve.visionTrack.getPose2d());
     // m_swerve.m_poseEstimator.resetPosition(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions(), new Pose2d());
-    // m_swerve.resetEncoders();
+    m_swerve.resetEncoders();
   }
 //-2.8
 
   /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {
-    m_lightController.setUnicornVomit((int)(-m_swerve.navX.getAngle()/2));
+    m_lightController.setKevinsBuggedOutBug((int)(-m_swerve.navX.getAngle()/2), false);
     m_swerve.setMaxSpeed(m_driveMode.checkState(xController));
     if (xController.getRightTriggerAxis() > 0.5)
     {
