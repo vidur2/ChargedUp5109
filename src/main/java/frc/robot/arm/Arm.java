@@ -14,7 +14,9 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj2.command.ProfiledPIDCommand;
 import frc.robot.util.IInit;
 import frc.robot.util.ITest;
@@ -25,6 +27,8 @@ public class Arm implements ITest, IInit {
     public CANSparkMax m_extender;
     public SparkMaxPIDController m_extenderController;
     public RelativeEncoder m_extenderEncoder;
+
+    public PowerDistribution m_pdp = new PowerDistribution();
 
     public CANSparkMax m_rotator;
     public SparkMaxPIDController m_rotatorController;
@@ -81,8 +85,8 @@ public class Arm implements ITest, IInit {
         // m_rotatorController.setI(0);
         // m_rotatorController.setIZone(0);
         // m_rotatorController.setD(0.0000);
-        m_rotatorController.setP(0.5);
-        m_rotatorController.setI(0);
+        m_rotatorController.setP(0.2);
+        m_rotatorController.setI(0.00005);
         m_rotatorController.setIMaxAccum(0.4, 0);
         m_rotatorController.setD(0);
         // m_rotatorController.setFF(0.84);
@@ -181,8 +185,21 @@ public class Arm implements ITest, IInit {
         // }
     }
 
+    private void resetArm() {
+        double current = m_pdp.getCurrent(14);
+        m_extender.set(-0.3);
+        while (current < 5) {
+            current = m_pdp.getCurrent(14);
+        }
+
+        System.out.println(current);
+
+        m_extender.set(0);
+    }
+
     @Override
     public void initAuto() {
+        resetArm();
         m_rotatorEncoder.setPosition(-Math.PI/2);
         m_extenderEncoder.setPosition(kArmMinExtension);
         

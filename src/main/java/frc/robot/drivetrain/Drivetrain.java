@@ -61,7 +61,7 @@ public class Drivetrain {
   public SwerveDrivePoseEstimator m_poseEstimator;
 
   // Holonomic drive controlling stuff
-  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(2, 0, 0), new PIDController(16, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
+  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(0, 0, 0), new PIDController(8, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
 
   // Shooter Range
   public double shooterRangeCm; // Enter shooter distance here (cm)

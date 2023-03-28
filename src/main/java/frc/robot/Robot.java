@@ -22,6 +22,7 @@ import edu.wpi.first.networktables.NetworkTableValue;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Notifier;
+import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
@@ -92,6 +93,7 @@ public class Robot extends TimedRobot {
 
   private HashMap<Integer, Pose2d> m_scoringMap = new HashMap<>();
   private ScoringController m_scoringController = new ScoringController(m_scoringMap);
+
   
   // Auton variables
   private int m_autoCounter = 0;
@@ -203,6 +205,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("ff", m_arm.m_armFeedForward.calculate(Math.PI, 0));
     SmartDashboard.putNumber("autoCounter", m_autoCounter);
     SmartDashboard.putNumber("extenderPosition", m_arm.m_extenderEncoder.getPosition());
+    SmartDashboard.putNumber("current", m_arm.m_pdp.getCurrent(14));
     // SmartDashboard.putNumber("fLeftEnc", m_swerve.m_frontLeft.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("fRightEnc", m_swerve.m_frontRight.m_driveEncoder.getPosition());
     // SmartDashboard.putNumber("bLeftEnc", m_swerve.m_backRight.m_driveEncoder.getPosition());
@@ -218,7 +221,7 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("x_odom", position.getX());
     SmartDashboard.putNumber("y_odom", position.getY());
     controllerState.addMethod(TeleopMethods.AutoBalance);
-    m_scoringMap.put(6, new Pose2d(6.991, -3.8681, Rotation2d.fromDegrees(0)));
+    m_scoringMap.put(6, new Pose2d(6.991, -4.1, Rotation2d.fromDegrees(0)));
     m_scoringMap.put(7, new Pose2d(6.991, -2.5685, Rotation2d.fromDegrees(0)));
   }
 
@@ -250,6 +253,7 @@ public class Robot extends TimedRobot {
     Pose2d position = m_swerve.m_poseEstimator.update(Rotation2d.fromDegrees(m_swerve.navX.getAngle()), m_swerve.getPositions());
     SmartDashboard.putNumber("x_odom", position.getX());
     SmartDashboard.putNumber("y_odom", position.getY());
+    SmartDashboard.putNumber("current", m_arm.m_pdp.getCurrent(14));
     // m_swerve.ntwrkInst.getTable(Constants.kTableInstance).putValue("angle", NetworkTableValue.makeDouble(Rotation2d.fromDegrees().getRadians()));
   }
 
