@@ -85,8 +85,8 @@ public class Arm implements ITest, IInit {
         // m_rotatorController.setI(0);
         // m_rotatorController.setIZone(0);
         // m_rotatorController.setD(0.0000);
-        m_rotatorController.setP(0.2);
-        m_rotatorController.setI(0.00005);
+        m_rotatorController.setP(0.5);
+        m_rotatorController.setI(0);
         m_rotatorController.setIMaxAccum(0.4, 0);
         m_rotatorController.setD(0);
         // m_rotatorController.setFF(0.84);
