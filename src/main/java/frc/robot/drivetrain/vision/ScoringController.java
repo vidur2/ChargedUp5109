@@ -42,6 +42,12 @@ public class ScoringController {
         }  else if (jStick.getRawButtonPressed(9)) {
             prevPress = 9;
             scoringPose = scoringPoints.get(9);
+        }   else if (jStick.getRawButtonPressed(10)) {
+            prevPress = 10;
+            scoringPose = scoringPoints.get(10);
+        }  else if (jStick.getRawButtonPressed(11)) {
+            prevPress = 11;
+            scoringPose = scoringPoints.get(11);
         }
 
         return scoringPose != null;

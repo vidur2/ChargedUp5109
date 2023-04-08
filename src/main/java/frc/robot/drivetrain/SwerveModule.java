@@ -27,7 +27,7 @@ public class SwerveModule implements RevOptimization{
   private static final double kModuleMaxAngularVelocity = Drivetrain.kMaxAngularSpeed;
   private static final double kModuleMaxAngularAcceleration = 3 * Math.PI; // radians per second squared
 
-  private final CANSparkMax m_driveMotor;
+  public final CANSparkMax m_driveMotor;
   public final CANSparkMax m_turningMotor;
 
   public final RelativeEncoder m_driveEncoder;

@@ -5,21 +5,31 @@
 package frc.robot.drivetrain;
 
 import edu.wpi.first.wpilibj.SPI;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import frc.robot.drivetrain.vision.ScoringController;
 import frc.robot.drivetrain.vision.VisionTrack;
 import frc.robot.util.Constants;
 
+import java.io.IOError;
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import java.util.HashMap;
 
 import javax.print.attribute.HashAttributeSet;
 
 import com.kauailabs.navx.frc.*;
+import com.revrobotics.CANSparkMax.IdleMode;
+
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
+import edu.wpi.first.math.kinematics.SwerveDriveOdometry;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.trajectory.TrajectoryUtil;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.*;
 import edu.wpi.first.math.controller.HolonomicDriveController;
@@ -30,6 +40,7 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Filesystem;
 
 /** Represents a swerve drive style drivetrain. */
 public class Drivetrain {
@@ -59,9 +70,10 @@ public class Drivetrain {
   public SwerveModule m_backRight;
   public AHRS navX = new AHRS(SPI.Port.kMXP);
   public SwerveDrivePoseEstimator m_poseEstimator;
+  public SwerveDriveOdometry m_odometery;
 
   // Holonomic drive controlling stuff
-  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(0, 0, 0), new PIDController(8, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(2 * Math.PI, Math.PI)));
+  HolonomicDriveController m_holonomicDriveController = new HolonomicDriveController(new PIDController(0, 0, 0), new PIDController(8, 0, 0), new ProfiledPIDController(0.5, 0, 0, new TrapezoidProfile.Constraints(Math.PI, 2 * Math.PI)));
 
   // Shooter Range
   public double shooterRangeCm; // Enter shooter distance here (cm)
@@ -70,11 +82,16 @@ public class Drivetrain {
   public final SwerveDriveKinematics m_kinematics = new SwerveDriveKinematics(
       m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation);
 
+  private float balanceP = 0.1f; // 0.08 (experimental)
+  private float balanceI = 0; 
+  private float balanceD = 1.15f; // .7 (experimental)
+  private float scalar = -1f;
+
   // public final SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
 
   /**
    * Constructor for the swerve drivetrain
-   * 
+   *  
    * @param shooterRange           The optimal shooting distance in cm for the
    *                               robot (used for auto aligment with limelight)
    * @param swerveFrontLeftMotors  The CAN ids for the swerve modules. The first
@@ -100,14 +117,20 @@ public class Drivetrain {
     m_backRight = new SwerveModule(swerveBackRightMotors[0], swerveBackRightMotors[1]);
     visionTrack = new VisionTrack(ntwrkInst, m_poseEstimator, navX);
     m_poseEstimator = new SwerveDrivePoseEstimator(m_kinematics, navX.getRotation2d(), getPositions(), visionTrack.getPose2d());
-    m_holonomicDriveController.setTolerance(new Pose2d(0, 0, Rotation2d.fromDegrees(5)));
+    m_odometery = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());
+    visionTrack.m_poseEstimator = m_poseEstimator;
+    m_holonomicDriveController.setTolerance(new Pose2d(0, 0, Rotation2d.fromDegrees(0)));
   }
 
   private float prevPitch = 0.0f;
   private float integral = 0.0f;
+  // for rateOfChange method...
+  private boolean firstTimeAutoBalanceRan = true;
+  private double startTime = 0.0;
+  private double elapsedTime = 0.0;
   public boolean autoBalance() // auto balance for the charging station
   {
-    /*boolean retVal = false;
+    boolean retVal = false;
     float pitch = navX.getRoll() - Constants.kNavXOffsetAlign; //pitch is offset by 2
     integral += pitch*0.01f;
     //System.out.println("Current Pitch: " + pitch);
@@ -133,33 +156,37 @@ public class Drivetrain {
     }
     prevPitch = pitch;
 
-    return retVal;*/
+    return retVal;
+
+    // if (firstTimeAutoBalanceRan)
+    // {
+    //     startTime = Timer.getFPGATimestamp();
+    // }
+    // elapsedTime = Timer.getFPGATimestamp() - startTime;
+
     
-    float pitch = navX.getRoll() - Constants.kNavXOffsetAlign; //pitch is offset by 2
-    // constants
-    float kRateOfChangeThreshold = 0.13f;
-    float kDriveSpeed = 0.68f; // m/s
-    float kDeadzone = 1f; //degrees (2.5 is max allowed on docs)
+    // float pitch = navX.getRoll() - Constants.kNavXOffsetAlign; //pitch is offset by 2
+    // // constants
+    // float kRateOfChangeThreshold = 0.13f;
+    // float kDriveSpeed = 0.68f; // m/s
+    // float kDeadzone = 1f; //degrees (2.5 is max allowed on docs)
 
-    if ((pitch - prevPitch) / 20f >= kRateOfChangeThreshold)
-    {
-      drive(0, 0, 0, true);
-      System.out.println("hit threshold");
-      return false;
-    }
-    else if (Math.abs(pitch) <= kDeadzone)
-    {
-      drive(0, 0, 0, true);
-      System.out.println("balanced.");
-      return true;
-    }
-    else
-    {
-      drive(kDriveSpeed, 0, 0, true);
-    }
-
-    prevPitch = pitch;
-    return false;
+    // if ((pitch - prevPitch) / 20f >= kRateOfChangeThreshold && elapsedTime >= 2.0)
+    // {
+    //   drive(0, 0, 0, true);
+    //   System.out.println("hit threshold");
+    //   return false;
+    // }
+    // else if (Math.abs(pitch) <= kDeadzone)
+    // {
+    //   drive(0, 0, 0, true);
+    //   System.out.println("balanced.");
+    //   return true;
+    // }
+    // else
+    // {
+    //   drive(kDriveSpeed, 0, 0, true);
+    // }
   }
 
   /**
@@ -247,7 +274,7 @@ public class Drivetrain {
     System.out.println(target);
     Pose2d curr = m_poseEstimator.getEstimatedPosition();
     ChassisSpeeds speed = m_holonomicDriveController.calculate(curr, target, 0, target.getRotation());
-    speed.omegaRadiansPerSecond = 0;
+    // speed.omegaRadiansPerSecond = 0;
     driveChassisSpeed(speed);
     return m_holonomicDriveController.atReference();
   }
@@ -263,11 +290,37 @@ public class Drivetrain {
   }
 
   public void rotateToZero() {
-    while (Math.abs(navX.getYaw()) > 2) {
+    while (Math.abs(navX.getYaw()) > 1) {
       SmartDashboard.putNumber("yaw", navX.getYaw());
-      drive(0, 0, 0.1 * (navX.getYaw()), true);
+      drive(0, 0, 0.4 * (navX.getYaw()), true);
     }
 
     drive(0, 0, 0, true);
+  }
+
+  public void brake() {
+    m_backLeft.m_driveMotor.setIdleMode(IdleMode.kBrake);
+    m_backRight.m_driveMotor.setIdleMode(IdleMode.kBrake);
+    m_frontLeft.m_driveMotor.setIdleMode(IdleMode.kBrake);
+    m_frontRight.m_driveMotor.setIdleMode(IdleMode.kBrake);
+  }
+
+  public void coast() {
+    m_backLeft.m_driveMotor.setIdleMode(IdleMode.kCoast);
+    m_backRight.m_driveMotor.setIdleMode(IdleMode.kCoast);
+    m_frontLeft.m_driveMotor.setIdleMode(IdleMode.kCoast);
+    m_frontRight.m_driveMotor.setIdleMode(IdleMode.kCoast);
+  }
+
+  public boolean followPath(Trajectory trajectory, Rotation2d heading) {
+    driveChassisSpeed(m_holonomicDriveController.calculate(m_odometery.getPoseMeters(), trajectory.sample(Timer.getFPGATimestamp()), heading));
+    return trajectory.getTotalTimeSeconds() < Timer.getFPGATimestamp();
+  }
+
+  private Trajectory loadPaths(String path) throws IOException{
+    Path trajectoryPath = Filesystem.getDeployDirectory().toPath().resolve(path);
+    Trajectory trajectory = TrajectoryUtil.fromPathweaverJson(trajectoryPath);
+    m_odometery.resetPosition(navX.getRotation2d(), getPositions(), trajectory.getInitialPose());
+    return trajectory;
   }
 }

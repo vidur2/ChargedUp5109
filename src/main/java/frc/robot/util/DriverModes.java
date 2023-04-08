@@ -33,6 +33,8 @@ public enum DriverModes {
                 SmartDashboard.putBoolean("willToggle", m_willToggled);
                 if (xController.getLeftBumper() && !m_pressed) {
                     return Constants.kMaxSpeed;
+                } else if (xController.getLeftTriggerAxis() >= 0.5) {
+                    return 15;
                 }
 
                 return m_willMultiplier * Constants.kMaxSpeed;

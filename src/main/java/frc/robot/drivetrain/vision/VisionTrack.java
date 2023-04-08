@@ -12,13 +12,14 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.networktables.DoubleArraySubscriber;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.TimestampedDoubleArray;
+import frc.robot.drivetrain.Drivetrain;
 import frc.robot.util.ArrayParser;
 import frc.robot.util.Constants;
 
 public class VisionTrack {
     private NetworkTableInstance ntwrkInst;
     double[] empty = {0, 0, 0};
-    private SwerveDrivePoseEstimator m_poseEstimator;
+    public SwerveDrivePoseEstimator m_poseEstimator;
     private DoubleArraySubscriber m_subscriber;
     private long lastUpdate = 0;
     private AHRS navX;
@@ -45,8 +46,9 @@ public class VisionTrack {
         return new Pose2d(new Translation2d(pose[1], pose[0]), navX.getRotation2d());
     }
 
-    public void updateVision() {
+    public void updateVision(Drivetrain m_swerve, boolean isNull) {
         TimestampedDoubleArray arr = m_subscriber.getAtomic();
+        // System.out.printf("%b, %b, %b\n", isNull, arr.timestamp != 0, arr.timestamp != lastUpdate);
         if (arr.timestamp != 0 && arr.timestamp != lastUpdate && m_poseEstimator != null) {
             Pose2d pose = new Pose2d(new Translation2d(arr.value[1], arr.value[0]), navX.getRotation2d());
             m_poseEstimator.addVisionMeasurement(pose, arr.timestamp * Math.pow(10, -6));

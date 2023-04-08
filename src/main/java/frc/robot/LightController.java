@@ -51,7 +51,8 @@ public class LightController implements ITest {
     public void setUnicornVomit(int offset, boolean fieldRelative) {
         int hueVal = 0;
         if (fieldRelative)
-        {    for (int i = 0; i < m_ledBuffer.getLength(); i++) {
+        {    
+            for (int i = 0; i < m_ledBuffer.getLength(); i++) {
                 m_ledBuffer.setHSV(i, (int)(((double)hueVal / (double)m_ledBuffer.getLength() + 40) * 180) + offset,255, 255);
                 hueVal += 1;
                 if (i % 26 == 0) {
@@ -75,17 +76,31 @@ public class LightController implements ITest {
 
     // sets the lightstrips to be kevin's bugged out janked out bug
     public void setKevinsBuggedOutBug(int offset, boolean fieldRelative) {
+        int hueVal = 0;
         if (fieldRelative)
         {    
-            for (int i = 0; i < m_ledBuffer.getLength(); i++) 
-            {
-                if (i <= m_ledBuffer.getLength() / 2 )
-                    m_ledBuffer.setRGB((i + offset) % m_ledBuffer.getLength(), 255,0, 0);
+            for (int i = 0; i < m_ledBuffer.getLength(); i++) {
+                int hue = (int)(((double)hueVal / (double)m_ledBuffer.getLength() + 40) * 180) + offset;
+                if (hue < Math.abs(hue - 120))
+                    m_ledBuffer.setHSV(i, 120, 255, 255);
                 else
                 {
-                    m_ledBuffer.setRGB((i + offset) % m_ledBuffer.getLength(), 0,255, 0);
+                    m_ledBuffer.setHSV(i, 0, 255, 255);
+                }
+                hueVal += 1;
+                if (i % 26 == 0) {
+                    hueVal += 10;
                 }
             }
+            // for (int i = 0; i < m_ledBuffer.getLength(); i++) 
+            // {
+            //     if (i <= m_ledBuffer.getLength() / 2 )
+            //         m_ledBuffer.setRGB((i + offset) % m_ledBuffer.getLength(), 255,0, 0);
+            //     else
+            //     {
+            //         m_ledBuffer.setRGB((i + offset) % m_ledBuffer.getLength(), 0, 0, 255);
+            //     }
+            // }
         }
         else
         {
@@ -97,7 +112,7 @@ public class LightController implements ITest {
                 }
                 else
                 {
-                    m_ledBuffer.setRGB(i, 0, 255, 0);
+                    m_ledBuffer.setRGB(i, 0, 0, 255);
                 }
             }
         }
