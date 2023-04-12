@@ -45,6 +45,9 @@ public class Arm implements ITest, IInit {
     private final Translation2d kAxisofRotation = new Translation2d(0, 1.3335);
     private final double kConeHeight = 15.92/100;
     private final double kTreyHeight = 1;
+    public ArmState m_armState;
+    private double m_armPickupHeight = -Math.PI-Math.PI/24;
+    private double m_armPlaceHeight = Math.PI/8;
     public final ArmFeedforward m_armFeedForward = new ArmFeedforward(1, 0.84, 1.75);
 
     public Arm(int extenderChannel, int rotatorChannel, int gripperChannelForward, boolean isClamping) {
@@ -53,6 +56,7 @@ public class Arm implements ITest, IInit {
         m_extender.setInverted(true);
         m_extenderController = m_extender.getPIDController();
         setExtenderPid();
+        m_armState = ArmState.kReset;
         m_extenderEncoder = m_extender.getEncoder();
 
         m_rotator = new CANSparkMax(rotatorChannel, MotorType.kBrushless);
@@ -95,6 +99,7 @@ public class Arm implements ITest, IInit {
     public void reset() {
         // m_gripper.grip();
         m_extenderController.setReference(Units.inchesToMeters(35), ControlType.kPosition);
+        m_armState = ArmState.kReset;
         Timer.delay(.5);
         m_rotatorController.setReference(-Math.PI/2, ControlType.kPosition);
         
@@ -142,8 +147,46 @@ public class Arm implements ITest, IInit {
     }
 
     public void pickup() {
-        pickup(Rotation2d.fromRadians(-Math.PI-Math.PI/24));
+        m_armState = ArmState.kPickup;
+        pickup(Rotation2d.fromRadians(m_armPickupHeight));
     }
+
+    public void raise() {
+        switch (m_armState) {
+            case kPickup:
+                m_armPickupHeight -= Math.PI/48;
+                m_rotatorController.setReference(m_armPickupHeight, ControlType.kPosition);
+                break;
+            case kPlacing:
+                m_armPlaceHeight += Math.PI/48;
+                m_rotatorController.setReference(m_armPlaceHeight, ControlType.kPosition);
+                break;
+            case kReset:
+                break;
+            default:
+                break;
+
+        }
+    }
+
+    public void lower() {
+        switch (m_armState) {
+            case kPickup:
+                m_armPickupHeight += Math.PI/48;
+                m_rotatorController.setReference(m_armPickupHeight, ControlType.kPosition);
+                break;
+            case kPlacing:
+                m_armPlaceHeight -= Math.PI/48;
+                m_rotatorController.setReference(m_armPlaceHeight, ControlType.kPosition);
+                break;
+            case kReset:
+                break;
+            default:
+                break;
+
+        }
+    }
+
 
     public Translation3d getGripperPosition(Translation2d robotPosition) {
         Translation2d gripperRelPose = new Translation2d(m_extenderEncoder.getPosition(), Rotation2d.fromRadians(m_rotatorEncoder.getPosition()));
@@ -153,10 +196,11 @@ public class Arm implements ITest, IInit {
     }
 
     public void place(TargetExtension target) {
+        m_armState = ArmState.kPlacing;
         // m_gripper.grip();
         switch (target) {
             case kHigh:
-                m_rotatorController.setReference(Math.PI/8, ControlType.kPosition);
+                m_rotatorController.setReference(m_armPlaceHeight, ControlType.kPosition);
                 Timer.delay(0.2);
                 m_extenderController.setReference(Units.inchesToMeters(51.5), ControlType.kPosition);
                 break;

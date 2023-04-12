@@ -82,9 +82,9 @@ public class Drivetrain {
   public final SwerveDriveKinematics m_kinematics = new SwerveDriveKinematics(
       m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation);
 
-  private float balanceP = 0.1f; // 0.08 (experimental)
+  private float balanceP = 0.1f; // 0.08 (new) .1(old)
   private float balanceI = 0; 
-  private float balanceD = 1.15f; // .7 (experimental)
+  private float balanceD = 1.15f; // .7 (new) 1.15(old)
   private float scalar = -1f;
 
   // public final SwerveDriveOdometry m_odometry = new SwerveDriveOdometry(m_kinematics, navX.getRotation2d(), getPositions());

@@ -6,6 +6,7 @@ package frc.robot;
 
 import java.util.HashMap;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.revrobotics.CANSparkMax.ControlType;
 
 import edu.wpi.first.cameraserver.CameraServer;
@@ -307,6 +308,7 @@ public class Robot extends TimedRobot {
     Timer.delay(1);
     m_arm.initAuto(); 
     m_arm.m_gripper.grip();
+    m_swerve.coast();
   }
 
   /** This function is called periodically during autonomous. */
@@ -370,7 +372,7 @@ public class Robot extends TimedRobot {
           m_autoCounter++;
           break;
           case 4:
-          if (Math.abs(m_swerve.navX.getRoll())  - Constants.kNavXOffsetAlign > 6)  { // > 10 (experimental)
+          if (Math.abs(m_swerve.navX.getRoll())  - Constants.kNavXOffsetAlign > 6)  { // > 6(old) 10(new)
             m_swerve.drive(0, 0, 0, true);
             m_autoCounter++;
           }  
@@ -485,10 +487,12 @@ public class Robot extends TimedRobot {
     if (jStick.getRawButtonPressed(5)) {
       m_midNotifier.startSingle(0.1);
     }
-    if (m_scoringController.registerInput(jStick)) {
-      // m_swerve.rotateToZero();
-      // Timer.delay(0.1);
-      m_reached = false;
+    if (xController.getXButtonPressed()) {
+      m_arm.raise();
+    }
+
+    if (xController.getBButtonPressed()) {
+      m_arm.lower();
     }
 
     if (xController.getAButtonPressed()) {
